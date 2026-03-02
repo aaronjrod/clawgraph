@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClawGraph | Sequential Timeline HUD</title>
+    <title>ClawGraph | Multi-Domain Timeline HUD</title>
     <style>
         :root {
             --bg-color: #0d1117;
@@ -15,57 +15,83 @@
             --state-working: #d29922;
             --state-failed: #f85149;
             --state-pending: #21262d;
+            --accent-blue: #58a6ff;
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+            padding: 40px;
             margin: 0;
-            overflow: hidden;
-        }
-
-        .container {
-            width: 80%;
             display: flex;
             flex-direction: column;
-            gap: 100px;
+            gap: 50px;
+            min-height: 100vh;
         }
 
         .header {
-            text-align: center;
-            margin-bottom: 20px;
+            border-bottom: 2px solid var(--line-color);
+            padding-bottom: 20px;
         }
 
         .header h1 {
-            font-size: 1.2rem;
-            letter-spacing: 2px;
-            color: var(--text-dim);
+            font-size: 1.4rem;
             text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0;
+            color: #fff;
         }
 
-        .timeline {
-            position: relative;
+        .header p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+
+        .timeline-grid {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
+            flex-direction: column;
+            gap: 80px;
         }
 
-        /* The horizontal line */
-        .timeline::before {
+        .track {
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            align-items: center;
+            gap: 40px;
+            position: relative;
+        }
+
+        .track-label {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-right: 1px solid var(--line-color);
+            padding-right: 20px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        .nodes-container {
+            display: flex;
+            align-items: center;
+            gap: 120px;
+            position: relative;
+        }
+
+        /* Horizontal connections */
+        .nodes-container::before {
             content: '';
             position: absolute;
             top: 50%;
             left: 0;
             right: 0;
-            height: 2px;
-            background-color: var(--line-color);
+            height: 1px;
+            background: var(--line-color);
             z-index: 1;
         }
 
@@ -75,85 +101,97 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px;
+            width: 20px;
+            /* Anchored width for circle */
         }
 
         .circle {
-            width: 24px;
-            height: 24px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
-            background-color: var(--state-pending);
+            background: var(--state-pending);
             border: 2px solid var(--line-color);
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Node States */
         .circle.done {
-            background-color: var(--state-done);
+            background: var(--state-done);
             border-color: var(--state-done);
-            box-shadow: 0 0 15px rgba(63, 185, 80, 0.4);
+            box-shadow: 0 0 10px rgba(63, 185, 80, 0.3);
         }
 
         .circle.working {
-            background-color: var(--state-working);
+            background: var(--state-working);
             border-color: var(--state-working);
-            box-shadow: 0 0 15px rgba(210, 153, 34, 0.4);
             animation: pulse 1.5s infinite;
         }
 
-        .circle.failed {
-            background-color: var(--state-failed);
-            border-color: var(--state-failed);
-            box-shadow: 0 0 15px rgba(248, 81, 73, 0.4);
-        }
-
-        .circle.filled {
-            background-color: var(--text-main);
-            border-color: var(--text-main);
-        }
-
-        .label {
+        .node-label {
             position: absolute;
-            top: 40px;
+            top: 25px;
+            font-size: 0.72rem;
             white-space: nowrap;
-            font-size: 0.85rem;
-            font-weight: 500;
             color: var(--text-dim);
+            text-align: center;
         }
 
-        .node:hover .label {
-            color: #fff;
+        /* Parallel Cluster (Fan-out/Fan-in) */
+        .parallel-cluster {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            z-index: 2;
         }
 
-        .status-msg {
+        .parallel-cluster::before,
+        .parallel-cluster::after {
+            content: '';
             position: absolute;
-            bottom: 40px;
-            font-size: 0.7rem;
-            color: var(--text-dim);
-            font-family: monospace;
+            width: 20px;
+            height: calc(100% - 4px);
+            border-top: 1px solid var(--line-color);
+            border-bottom: 1px solid var(--line-color);
+            top: 2px;
+        }
+
+        .parallel-cluster::before {
+            left: -20px;
+            border-left: 1px solid var(--line-color);
+            border-radius: 4px 0 0 4px;
+        }
+
+        .parallel-cluster::after {
+            right: -20px;
+            border-right: 1px solid var(--line-color);
+            border-radius: 0 4px 4px 0;
         }
 
         @keyframes pulse {
             0% {
                 transform: scale(1);
+                opacity: 0.8;
             }
 
             50% {
-                transform: scale(1.1);
+                transform: scale(1.2);
+                opacity: 1;
             }
 
             100% {
                 transform: scale(1);
+                opacity: 0.8;
             }
         }
 
         .legend {
+            margin-top: auto;
             display: flex;
-            justify-content: center;
             gap: 30px;
-            margin-top: 50px;
             font-size: 0.75rem;
             color: var(--text-dim);
+            padding-top: 30px;
+            border-top: 1px solid var(--line-color);
         }
 
         .legend-item {
@@ -169,19 +207,15 @@
         }
 
         .dot.done {
-            background-color: var(--state-done);
+            background: var(--state-done);
         }
 
         .dot.working {
-            background-color: var(--state-working);
-        }
-
-        .dot.failed {
-            background-color: var(--state-failed);
+            background: var(--state-working);
         }
 
         .dot.pending {
-            background-color: var(--state-pending);
+            background: var(--state-pending);
             border: 1px solid var(--line-color);
         }
     </style>
@@ -189,61 +223,153 @@
 
 <body>
 
-    <div class="container">
-        <div class="header">
-            <h1>Workflow Execution Path</h1>
-        </div>
+    <div class="header">
+        <h1>ClawGraph | Sovereign Domain Execution Tracks</h1>
+        <p>A multi-track visualization of sequential and parallel task orchestration across all domains.</p>
+    </div>
 
-        <div class="timeline">
-            <!-- Node 1: Protocol -->
-            <div class="node">
-                <div class="circle done"></div>
-                <div class="label">Protocol Development</div>
-                <div class="status-msg">SIGNAL: DONE [v1.2]</div>
-            </div>
+    <div class="timeline-grid">
 
-            <!-- Node 2: IND -->
-            <div class="node">
-                <div class="circle done"></div>
-                <div class="label">IND Submission</div>
-                <div class="status-msg">SIGNAL: DONE [FILED]</div>
-            </div>
+        <!-- Track 1: Clinical Operations (Parallelism Demo) -->
+        <div class="track">
+            <div class="track-label">Clinical Ops</div>
+            <div class="nodes-container">
+                <div class="node">
+                    <div class="circle done"></div>
+                    <div class="node-label">Onboarding</div>
+                </div>
 
-            <!-- Node 3: Enrollment -->
-            <div class="node">
-                <div class="circle working"></div>
-                <div class="label">Patient Enrollment</div>
-                <div class="status-msg">SIGNAL: WORKING...</div>
-            </div>
+                <div class="parallel-cluster">
+                    <div class="node">
+                        <div class="circle done"></div>
+                        <div class="node-label">Lab Vetting</div>
+                    </div>
+                    <div class="node">
+                        <div class="circle working"></div>
+                        <div class="node-label">Integrity Check</div>
+                    </div>
+                    <div class="node">
+                        <div class="circle done"></div>
+                        <div class="node-label">Narration</div>
+                    </div>
+                </div>
 
-            <!-- Node 4: CMC Stability -->
-            <div class="node">
-                <div class="circle"></div>
-                <div class="label">CMC Stability</div>
-                <div class="status-msg">WAITING [on_recruitment]</div>
-            </div>
-
-            <!-- Node 5: eCTD Publishing -->
-            <div class="node">
-                <div class="circle"></div>
-                <div class="label">Final eCTD Publishing</div>
-                <div class="status-msg">WAITING</div>
+                <div class="node">
+                    <div class="circle"></div>
+                    <div class="node-label">Daily Sync</div>
+                </div>
             </div>
         </div>
 
-        <div class="legend">
-            <div class="legend-item">
-                <div class="dot done"></div> COMPLETED
+        <!-- Track 2: CMC Regulatory -->
+        <div class="track">
+            <div class="track-label">CMC Regulatory</div>
+            <div class="nodes-container">
+                <div class="node">
+                    <div class="circle done"></div>
+                    <div class="node-label">Stability Init</div>
+                </div>
+                <div class="node">
+                    <div class="circle working"></div>
+                    <div class="node-label">Trend Analysis</div>
+                </div>
+                <div class="node">
+                    <div class="circle"></div>
+                    <div class="node-label">Tech Docs</div>
+                </div>
+                <div class="node">
+                    <div class="circle"></div>
+                    <div class="node-label">Validation</div>
+                </div>
             </div>
-            <div class="legend-item">
-                <div class="dot working"></div> ACTIVE
+        </div>
+
+        <!-- Track 3: Clinical Regulatory -->
+        <div class="track">
+            <div class="track-label">Clinical Reg</div>
+            <div class="nodes-container">
+                <div class="node">
+                    <div class="circle done"></div>
+                    <div class="node-label">Protocol Dev</div>
+                </div>
+                <div class="node">
+                    <div class="circle done"></div>
+                    <div class="node-label">IND Submission</div>
+                </div>
+                <div class="node">
+                    <div class="circle"></div>
+                    <div class="node-label">Investigator Broc</div>
+                </div>
             </div>
-            <div class="legend-item">
-                <div class="dot failed"></div> ALERT
+        </div>
+
+        <!-- Track 4: Strategic & Labeling (Parallel Output) -->
+        <div class="track">
+            <div class="track-label">Strategy & Labeling</div>
+            <div class="nodes-container">
+                <div class="node">
+                    <div class="circle done"></div>
+                    <div class="node-label">CCDS Strategy</div>
+                </div>
+
+                <div class="parallel-cluster">
+                    <div class="node">
+                        <div class="circle working"></div>
+                        <div class="node-label">USPI Leaflets</div>
+                    </div>
+                    <div class="node">
+                        <div class="circle"></div>
+                        <div class="node-label">Risk Assessment</div>
+                    </div>
+                </div>
             </div>
-            <div class="legend-item">
-                <div class="dot pending"></div> QUEUED
+        </div>
+
+        <!-- Track 5: Regulatory Ops -->
+        <div class="track">
+            <div class="track-label">Reg Ops</div>
+            <div class="nodes-container">
+                <div class="node">
+                    <div class="circle done"></div>
+                    <div class="node-label">Global Coord</div>
+                </div>
+                <div class="node">
+                    <div class="circle"></div>
+                    <div class="node-label">eCTD Gate</div>
+                </div>
+                <div class="node">
+                    <div class="circle"></div>
+                    <div class="node-label">Formatting</div>
+                </div>
             </div>
+        </div>
+
+        <!-- Track 6: Global Marketing -->
+        <div class="track">
+            <div class="track-label">Marketing</div>
+            <div class="nodes-container">
+                <div class="node">
+                    <div class="circle"></div>
+                    <div class="node-label">Press Release</div>
+                </div>
+                <div class="node">
+                    <div class="circle"></div>
+                    <div class="node-label">Strategic Launch</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="dot done"></div> COMPLETED
+        </div>
+        <div class="legend-item">
+            <div class="dot working"></div> ACTIVE
+        </div>
+        <div class="legend-item">
+            <div class="dot pending"></div> QUEUED
         </div>
     </div>
 
