@@ -61,10 +61,10 @@ Every node must return a `ClawOutput`, which dictates the flow of the entire Bag
 | **`summary`** | `str` | Plain-text explanation for the Architect/HUD. |
 | **`result_uri`** | `str` | (Optional) Pointer to Tier 3 results (S3, local path, etc). |
 | **`error_detail`** | `dict` | (Optional) Structured data for troubleshooting. |
-| **`next_steps_hint`** | `list[str]` | **Predictive Orchestration**. Hints for the SO (e.g., `["trigger:cmc_sync"]`). |
+| **`next_steps_hint`** | `list[str]` | **Recommendations for the SO**. Does NOT directly trigger other nodes. |
 
 > [!TIP]
-> **Predictive Orchestration**: By providing `next_steps_hint`, a node reduces the "Cognitive Overhead" of the Super-Orchestrator. Instead of the SO having to *reason* about what's next, the specialist provides a direct recommendation based on the result.
+> **Sovereign Delegation**: By providing `next_steps_hint`, a node recommends a tactical path to the Super-Orchestrator. This preserves the decoupling between bags—a Regulatory specialist doesn't need to know the internal structure of the CMC bag; it simply hints that "CMC validation is likely next."
 
 ## 🛰️ Lifecycle in the Workspace
 - **Registration**: Architect calls `register_node` with the logic and metadata.

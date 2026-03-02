@@ -18,11 +18,13 @@ from clawgraph import clawnode, ClawOutput, Signal
 
 @clawnode(id="ind_submission", bag="clinical_regulatory", skills=["clinical_reg/ind_submissions.md"], tools=["pdf_parser"])
 def manage_ind_submission(inputs: dict) -> ClawOutput:
+    # Logic: Compiling IND package based on SO instructions.
     return ClawOutput(signal=Signal.DONE, summary="IND Package Prepared.")
 
 @clawnode(id="protocol_benchmark", bag="clinical_regulatory", skills=["clinical_reg/protocol_development.md"], tools=["google_search"])
 def benchmark_protocol(inputs: dict) -> ClawOutput:
-    return ClawOutput(signal=Signal.DONE, summary="Protocol drafted.", next_steps_hint=["trigger:cmc_alignment"])
+    # Predictive Hint: Recommending CMC alignment to the SO.
+    return ClawOutput(signal=Signal.DONE, summary="Protocol drafted.", next_steps_hint=["check:cmc_alignment"])
 
 @clawnode(id="ib_authoring", bag="clinical_regulatory", skills=["clinical_reg/investigator_brochure.md"], tools=["stats_calc"])
 def author_ib(inputs: dict) -> ClawOutput:
@@ -36,7 +38,8 @@ def generate_annual_report(inputs: dict) -> ClawOutput:
 
 @clawnode(id="stability_manager", bag="cmc_regulatory", skills=["cmc_reg/stability_data_management.md"], tools=["excel_bridge", "stats_calc"])
 def manage_stability(inputs: dict) -> ClawOutput:
-    return ClawOutput(signal=Signal.DONE, summary="Stability trends within 0.1%.", next_steps_hint=["trigger:ind_annual_update"])
+    # Recommending safety update to SO if drift detected.
+    return ClawOutput(signal=Signal.DONE, summary="Stability trends within 0.1%.", next_steps_hint=["check:ind_annual_update"])
 
 @clawnode(id="mod3_author", bag="cmc_regulatory", skills=["cmc_reg/module_3_authoring.md"], tools=["pdf_parser"])
 def author_mod3(inputs: dict) -> ClawOutput:
@@ -74,12 +77,12 @@ def triage_abnormals(inputs: dict) -> ClawOutput:
 
 @clawnode(id="integrity_checker", bag="clinical_ops", skills=["clinical_ops/document_alignment_checker.md"], tools=["pdf_parser"])
 def check_integrity(inputs: dict) -> ClawOutput:
-    # CATCHING THE NM5072 vs NM5082 TRAP
+    # Preserving bag sovereignty: Reporting to SO.
     return ClawOutput(signal=Signal.DONE, summary="Dossier verified.")
 
 @clawnode(id="narration_scribe", bag="clinical_ops", skills=["clinical_ops/medical_scribe_narration.md"], tools=["pdf_parser"])
 def scribe_visit(inputs: dict) -> ClawOutput:
-    return ClawOutput(signal=Signal.DONE, summary="Narration complete.", next_steps_hint=["trigger:daily_sync"])
+    return ClawOutput(signal=Signal.DONE, summary="Narration complete.", next_steps_hint=["check:daily_sync"])
 
 # --- BAG 4: Reg_Ops_Bag ---
 
