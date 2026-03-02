@@ -9,14 +9,16 @@
 Most agentic systems fail as they scale. When a single agent or a simple chain tries to handle 50+ tools, complex reasoning, and long-running state, you encounter:
 - **Context Saturation**: The agent gets "lost" in its own history.
 - **Reasoning Drift**: Subtle hallucinations or incorrect tool calls compound over time.
-- **Lack of Oversight**: "Black box" execution makes it impossible for developers to debug why a long-running task failed at step 42.
+- **Troubleshooting Debt**: Manually-built multi-agent systems (MAS) are notoriously brittle. They take weeks to define and even longer to troubleshoot when they break.
 
 ## ✅ The Solution: The Sovereign Workspace
-ClawGraph solves this by partitioning labor into three distinct tiers:
+ClawGraph solves this by shifting the burden of system maintenance from the human to the AI. Instead of you manually wiring every edge, you provide the goal to the **Architect**, who then manages the troubleshooting, testing, and reinforcement of the agent bag for you.
+
+We partition labor into three distinct tiers:
 
 1.  **The Architect (Super-Orchestrator)**: An intelligent agent (e.g., **OpenClaw**, **Claude Code**, **Codex**, or **Antigravity**) that builds, audits, and repairs the system. It writes the node code and debugs the graph.
 2.  **The Tactical Director (Orchestrator)**: A specialized runtime that doesn't "do" the work, but routes results between nodes based on standardized signals.
-3.  **The Library (Bag of Nodes)**: A dynamic collection of atomic, task-specific nodes. The Orchestrator only sees metadata (summaries); the Architect sees everything.
+3.  **The Library (Bag of Agents)**: A dynamic collection of atomic, task-specific **Agent Nodes**. The Orchestrator only sees metadata (summaries); the Architect manages the underlying agent logic.
 
 ---
 
