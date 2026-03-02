@@ -1,7 +1,7 @@
-\"\"\"
+"""
 ClawGraph Expert Example: Clinical Trial Operations (CTO)
 Architecture: One Bag Per Specialist | One Node Per Task
-\"\"\"
+"""
 
 from clawgraph import clawnode, ClawOutput, Signal
 
@@ -27,7 +27,7 @@ def write_ib_justification(inputs: dict) -> ClawOutput:
     # Logic: Cross-disease justification
     return ClawOutput(signal=Signal.DONE, summary="IB justified.")
 
-# --- BAG: CMC_Bag (Specialist: Chemistry, Mfg \u0026 Controls) ---
+# --- BAG: CMC_Bag (Specialist: Chemistry, Mfg & Controls) ---
 
 @clawnode(
     id="coa_parse_task",
