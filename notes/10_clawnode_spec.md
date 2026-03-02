@@ -52,11 +52,19 @@ Nodes are authorized to use specific **Tools**.
 
 **Example**: A Regulatory Agent has the **Skill** of knowing *how* to vet a document, but uses the **Tool** `pdf_parser` to actually read it.
 
-### 4. Signal-Based Output
+### 4. Signal-Based Output (`ClawOutput`)
 Every node must return a `ClawOutput`, which dictates the flow of the entire Bag.
-- **`signal`**: The tactical instruction (DONE, FAILED, NEED_INFO, etc.).
-- **`summary`**: A context-lean summary for the Orchestrator.
-- **`result_uri`**: A pointer to the raw, large-scale data (Tier 3).
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| **`signal`** | `Signal` | `DONE`, `FAILED`, `NEED_INFO`, `WORKING`, `HOLD_FOR_HUMAN`. |
+| **`summary`** | `str` | Plain-text explanation for the Architect/HUD. |
+| **`result_uri`** | `str` | (Optional) Pointer to Tier 3 results (S3, local path, etc). |
+| **`error_detail`** | `dict` | (Optional) Structured data for troubleshooting. |
+| **`next_steps_hint`** | `list[str]` | **Predictive Orchestration**. Hints for the SO (e.g., `["trigger:cmc_sync"]`). |
+
+> [!TIP]
+> **Predictive Orchestration**: By providing `next_steps_hint`, a node reduces the "Cognitive Overhead" of the Super-Orchestrator. Instead of the SO having to *reason* about what's next, the specialist provides a direct recommendation based on the result.
 
 ## 🛰️ Lifecycle in the Workspace
 - **Registration**: Architect calls `register_node` with the logic and metadata.
