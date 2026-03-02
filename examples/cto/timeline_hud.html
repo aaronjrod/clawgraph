@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClawGraph | Sequential Timeline HUD</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --line-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --state-done: #3fb950;
+            --state-working: #d29922;
+            --state-failed: #f85149;
+            --state-pending: #21262d;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 80%;
+            display: flex;
+            flex-direction: column;
+            gap: 100px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .timeline {
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* The horizontal line */
+        .timeline::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--line-color);
+            z-index: 1;
+        }
+
+        .node {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--state-pending);
+            border: 2px solid var(--line-color);
+            transition: all 0.3s ease;
+        }
+
+        /* Node States */
+        .circle.done {
+            background-color: var(--state-done);
+            border-color: var(--state-done);
+            box-shadow: 0 0 15px rgba(63, 185, 80, 0.4);
+        }
+
+        .circle.working {
+            background-color: var(--state-working);
+            border-color: var(--state-working);
+            box-shadow: 0 0 15px rgba(210, 153, 34, 0.4);
+            animation: pulse 1.5s infinite;
+        }
+
+        .circle.failed {
+            background-color: var(--state-failed);
+            border-color: var(--state-failed);
+            box-shadow: 0 0 15px rgba(248, 81, 73, 0.4);
+        }
+
+        .circle.filled {
+            background-color: var(--text-main);
+            border-color: var(--text-main);
+        }
+
+        .label {
+            position: absolute;
+            top: 40px;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-dim);
+        }
+
+        .node:hover .label {
+            color: #fff;
+        }
+
+        .status-msg {
+            position: absolute;
+            bottom: 40px;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            font-family: monospace;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 50px;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot.done {
+            background-color: var(--state-done);
+        }
+
+        .dot.working {
+            background-color: var(--state-working);
+        }
+
+        .dot.failed {
+            background-color: var(--state-failed);
+        }
+
+        .dot.pending {
+            background-color: var(--state-pending);
+            border: 1px solid var(--line-color);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>Workflow Execution Path</h1>
+        </div>
+
+        <div class="timeline">
+            <!-- Node 1: Protocol -->
+            <div class="node">
+                <div class="circle done"></div>
+                <div class="label">Protocol Development</div>
+                <div class="status-msg">SIGNAL: DONE [v1.2]</div>
+            </div>
+
+            <!-- Node 2: IND -->
+            <div class="node">
+                <div class="circle done"></div>
+                <div class="label">IND Submission</div>
+                <div class="status-msg">SIGNAL: DONE [FILED]</div>
+            </div>
+
+            <!-- Node 3: Enrollment -->
+            <div class="node">
+                <div class="circle working"></div>
+                <div class="label">Patient Enrollment</div>
+                <div class="status-msg">SIGNAL: WORKING...</div>
+            </div>
+
+            <!-- Node 4: CMC Stability -->
+            <div class="node">
+                <div class="circle"></div>
+                <div class="label">CMC Stability</div>
+                <div class="status-msg">WAITING [on_recruitment]</div>
+            </div>
+
+            <!-- Node 5: eCTD Publishing -->
+            <div class="node">
+                <div class="circle"></div>
+                <div class="label">Final eCTD Publishing</div>
+                <div class="status-msg">WAITING</div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="dot done"></div> COMPLETED
+            </div>
+            <div class="legend-item">
+                <div class="dot working"></div> ACTIVE
+            </div>
+            <div class="legend-item">
+                <div class="dot failed"></div> ALERT
+            </div>
+            <div class="legend-item">
+                <div class="dot pending"></div> QUEUED
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

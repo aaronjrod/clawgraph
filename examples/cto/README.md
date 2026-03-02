@@ -8,6 +8,11 @@ This high-fidelity example demonstrates **ClawGraph** applied to highly regulate
 
 ![Director's HUD Preview](assets/hud_preview.png)
 
+### Sequential Execution Path (Minimalist View)
+For simpler tracking, the **Timeline HUD** provides a linear view of the clinical chain of command.
+
+![Timeline Preview](assets/timeline_preview.png)
+
 The architecture is centered around a **Super-Orchestrator (SO)**—the Clinical Director agent—which maintains global state and mediates all cross-domain communication. Domain expertise is compartmentalized into **Sovereign Domains**, each containing a suite of specialized Task Nodes.
 
 ```mermaid
