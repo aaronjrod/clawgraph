@@ -14,7 +14,7 @@ Most agentic systems fail as they scale. When a single agent or a simple chain t
 ## ✅ The Solution: The Sovereign Workspace
 ClawGraph solves this by partitioning labor into three distinct tiers:
 
-1.  **The Architect (Super-Orchestrator)**: An intelligent agent (e.g., Claude Code) that builds, audits, and repairs the system. It writes the code for the nodes and debugs the graph.
+1.  **The Architect (Super-Orchestrator)**: An intelligent agent (e.g., **OpenClaw**, **Claude Code**, **Codex**, or **Antigravity**) that builds, audits, and repairs the system. It writes the node code and debugs the graph.
 2.  **The Tactical Director (Orchestrator)**: A specialized runtime that doesn't "do" the work, but routes results between nodes based on standardized signals.
 3.  **The Library (Bag of Nodes)**: A dynamic collection of atomic, task-specific nodes. The Orchestrator only sees metadata (summaries); the Architect sees everything.
 
