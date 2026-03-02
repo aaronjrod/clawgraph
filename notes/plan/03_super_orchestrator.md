@@ -17,7 +17,8 @@ Empower the "Lead Teammate" (Super-Orchestrator) with the tools required to buil
 2. **Discovery-First Enforcement**
     - [ ] Implement `get_inventory()` return shape.
     - [ ] Add advisory warnings if CRUD is called before inventory retrieval.
-    - **Ref**: [06_patterns.md (Part 4.1)](file:///Users/aaronrodrigues/projects/clawgraph/notes/06_patterns.md#L214).
+    - [ ] **[NEW]** Implement `SkillsContextManager` to read `.md` files and inject into system prompts.
+    - **Ref**: [06_patterns.md (Part 3.4)](file:///Users/aaronrodrigues/projects/clawgraph/notes/06_patterns.md#L138).
 
 3. **Audit Mechanism**
     - [ ] `audit_node(id)`: Returns full source (Tier 2) and result archive (Tier 3).

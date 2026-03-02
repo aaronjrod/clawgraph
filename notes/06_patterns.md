@@ -61,9 +61,28 @@ Choosing the wrong signal is the most common source of Orchestrator confusion. U
 
 ---
 
-## Part 3: Canonical Node Patterns
+## Part 3: Canonical Node Patterns (The Bag of Agents)
 
-### 3.1 Simple Task Node
+ClawGraph nodes are not just functions; they are **Specialized Agents**. Each node captures a narrow domain of expertise, defined by its `skills.md` files and Architect-led instructions.
+
+### 3.1 The @clawnode Decorator
+
+The primary way to define an agent is via the `@clawnode` decorator.
+
+```python
+@clawnode(
+    id="regulatory_specialist",
+    description="Vets clinical documents against FDA 21 CFR Part 11.",
+    skills=["fda_compliance.md", "protocol_benchmarking.md"],
+    model="claude-3-5-sonnet", # Specialized reasoning model
+    tools=["pdf_parser", "internet_search"]
+)
+def regulatory_audit(inputs: dict) -> ClawOutput:
+    # Logic: The Architect provides the skills context automatically
+    ...
+```
+
+### 3.2 Simple Task Node
 
 The baseline pattern. One job, one output.
 
@@ -88,7 +107,7 @@ def summarize_document(state: BagState) -> ClawOutput:
 
 ---
 
-### 3.2 Node with Human Gate (`HOLD_FOR_HUMAN`)
+### 3.3 Node with Human Gate (`HOLD_FOR_HUMAN`)
 
 Use when a dangerous or irreversible action needs explicit approval.
 
@@ -127,7 +146,7 @@ bag.resume_job(thread_id=state["thread_id"], human_response="approved")
 
 ---
 
-### 3.3 Subgraph with Aggregator Node (Parallel Fan-out)
+### 3.4 Subgraph with Aggregator Node (Parallel Fan-out)
 
 When work can be parallelized, contain it inside a subgraph. The Orchestrator calls the subgraph as a single unit and receives one signal back. It never sees the individual inner nodes.
 
@@ -139,9 +158,8 @@ Subgraph: analyze_codebase
 ```
 
 - **Aggregator's Job**: Collects internal results and decides the final external signal.
-- **Error Detail Rule**: If a parallel branch fails, the Aggregator **must** identify which specific branch failed in the `error_detail`. 
-    - *Bad*: "3 tasks failed."
-    - *Good*: "FAILED: 'parse_invoice_7' and 'parse_invoice_12' failed schema validation. 10 others succeeded."
+- **Error Detail Rule**: If a parallel branch fails, the Aggregator- **Identification**: `summary` identifies exactly which branch failed (e.g., `"Branch: Site-03 (India) failed CMC check"`).
+- **Escalation**: The failure signal is passed to the Orchestrator, which may then route to the Super-Orchestrator for repair.
 - **Why?** This allows the Super-Orchestrator to perform targeted repairs/re-runs without resetting the entire subgraph.
 - **Role Distinction**: The `summary` tells the **Orchestrator** what happened at a high level for routing; the `error_detail` tells the **Super-Orchestrator** exactly what to fix.
 

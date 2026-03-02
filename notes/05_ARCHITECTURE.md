@@ -60,6 +60,13 @@ graph TD
     SM -.->|Live Stream| UI[Mission Control UI]
 ```
 
+### 2.1 The Bag (Node Layer)
+The "Bag" is a set of **Agent Nodes**. Each node is a discrete unit of execution with:
+- **Core Logic**: The Python implementation.
+- **Agent Persona**: Defined by `description` and `skills.md`.
+- **Hardware/Model Specs**: Specific `provider` and `model` preferences.
+- **Sandboxed Tools**: A list of authorized capabilities (CLI, API).
+
 ## 3. The "Bag of Nodes" Design
 The "Bag" is a dynamic registry of `ClawNode` and `ClawSubgraph` objects. Unlike traditional LangGraph implementations, these nodes are not statically linked by edges at compile time. Instead, they are **individually addressable**.
 

@@ -12,7 +12,8 @@ Establish the core data structures, signaling enum, and state management logic t
 1. **Core Schemas**
     - [ ] Define `Signal` Enum (DONE, FAILED, NEED_INFO, HOLD_FOR_HUMAN, NEED_INTERVENTION).
     - [ ] Create `ClawOutput` Pydantic model with `signal`, `summary`, `error_detail`, and `result_uri`.
-    - **Ref**: [03_FRS.md (Signal Definition)](file:///Users/aaronrodrigues/projects/clawgraph/notes/03_FRS.md#L45).
+    - [ ] **[NEW]** Define `ClawNodeMetadata` schema (`provider`, `model`, `skills`, `tools`).
+    - **Ref**: [10_clawnode_spec.md](file:///Users/aaronrodrigues/projects/clawgraph/notes/10_clawnode_spec.md).
 
 2. **The Signal Manager**
     - [ ] Implement `SignalManager.process_signal()` logic.
