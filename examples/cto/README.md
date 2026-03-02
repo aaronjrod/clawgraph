@@ -6,7 +6,7 @@ This high-fidelity example demonstrates **ClawGraph** applied to highly regulate
 
 ## 🏛️ System Architecture: The "Director's HUD"
 
-![Director's HUD Preview](/Users/aaronrodrigues/projects/clawgraph/examples/cto/assets/hud_preview.png)
+![Director's HUD Preview](assets/hud_preview.png)
 
 The architecture is centered around a **Super-Orchestrator (SO)**—the Clinical Director agent—which maintains global state and mediates all cross-domain communication. Domain expertise is compartmentalized into **Sovereign Domains**, each containing a suite of specialized Task Nodes.
 
