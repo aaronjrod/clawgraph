@@ -8,18 +8,31 @@ The Super-Orchestrator manages a **6-Bag Sovereign Architecture**, coordinating 
 ## 👁️ The Looming Architect View
 The Super-Orchestrator manages a **6-Bag Sovereign Architecture**. Every box below represents a 1st-class Agent Node.
 
-## 👁️ The Looming Architect View
-The Super-Orchestrator (SO) is the central hub. It delegates between **Sovereign Bags** based on their tactical signals. There are **no explicit connections** between nodes across different bags.
+## 👁️ The Looming Architect HUD
+The Super-Orchestrator manages a **6-Bag Sovereign Architecture**. Every element below is a 1st-class Agent Node or Domain-Specific Skill, coordinated via a single tactical hub.
 
 ```mermaid
 graph TD
-    SO["Architect: Super-Orchestrator"]
+    %% Architect Tier
+    subgraph "Architect (Super-Orchestrator)"
+        SO["<b>Looming Clinical Director</b><br/>(Cross-Bag Decision Intelligence)"]
+    end
+
+    %% Bag Tier
+    SO --- CLIN_OPS
+    SO --- CLIN_REG
+    SO --- CMC_REG
+    SO --- STRAT_LABEL
+    SO --- REG_OPS
+    SO --- MARKETING
 
     subgraph CLIN_OPS ["Clinical Trial Ops Bag"]
         SYNC[Patient Tracking Sync]
         ONB[New Patient Onboarding]
         INV[Lab Invoice Vetting]
         INT[Master Integrity Checker]
+        DEV[Deviation Reporting]
+        TRIA[Abnormality Triage]
         SCRIB[Scribe Narration]
     end
 
@@ -36,38 +49,45 @@ graph TD
         SUB[Substance Validation]
     end
 
-    subgraph STRATEGY_LABEL ["Strategy & Labeling Bag"]
+    subgraph STRAT_LABEL ["Strategy & Labeling Bag"]
         RISK[Risk Assessment]
         NEG[Label Negotiation]
         CCDS[Core Data Sheet]
+        USPI[Patient Leaflets]
     end
 
-    %% All bags report to SO
-    CLIN_OPS -- "signals" --> SO
-    CLIN_REG -- "signals" --> SO
-    CMC_REG -- "signals" --> SO
-    STRATEGY_LABEL -- "signals" --> SO
+    subgraph REG_OPS ["Reg Ops Bag"]
+        PUBL[eCTD Publishing]
+        FORM[Submission Formatting]
+        GLOB[Global Coordination]
+    end
 
-    %% SO delegates to bags
-    SO -- "delegates" --> CLIN_OPS
-    SO -- "delegates" --> CLIN_REG
-    SO -- "delegates" --> CMC_REG
-    SO -- "delegates" --> STRATEGY_LABEL
+    subgraph MARKETING ["Marketing Bag"]
+        PR[Press Release Writer]
+    end
 
-    style SO fill:#f9f,stroke:#333,stroke-width:4px
+    %% Styling for "Impressive" look
+    style SO fill:#f9f,stroke:#333,stroke-width:4px,color:#000
+    style CLIN_OPS fill:#e1f5fe,stroke:#01579b
+    style CLIN_REG fill:#e1f5fe,stroke:#01579b
+    style CMC_REG fill:#fff3e0,stroke:#e65100
+    style STRAT_LABEL fill:#f3e5f5,stroke:#4a148c
+    style REG_OPS fill:#f1f8e9,stroke:#1b5e20
+    style MARKETING fill:#fce4ec,stroke:#880e4f
 ```
 
 ## 🚥 Cross-Bag Delegation (SO-Mediated Logic)
-ClawGraph preserves bag sovereignty. Communication is always mediated by the Super-Orchestrator:
+ClawGraph preserves bag sovereignty. Communication is always mediated by the Super-Orchestrator (SO):
 
-1.  **Technical Event -> Tactical Re-route**: If `STAB` (CMC Bag) emits a `FAILED` signal with a stability drift detail, the **Architect** (SO) reasons that the `IND` (Clinical Reg) needs an update. 
-2.  **Ops Signal -> Strategic Alert**: If `INT` (Clinical Ops) detects an NM-ID mismatch, it signals `NEED_INTERVENTION`. The **Architect** then pauses the `PUBL` (Reg Ops) workflow and tasks the `PROT` bag with a correction.
-3.  **Sovereignty Rule**: A node in the CMC Bag *cannot* trigger a node in the Regulatory Bag. It can only report its finding to the SO, which then decides the next delegation.
+1.  **Technical Pulse -> Clinical Update**: If `STAB` (CMC Bag) emits structural drift data, the **SO** re-triggers the `IND` (Clinical Reg) node to update the safety justification.
+2.  **Ops Signal -> Strategic Alert**: If `INT` (Clinical Ops) detects an NM-ID mismatch (NM5072 vs NM5082), the **SO** pauses the `PUBL` (Reg Ops) workflow and tasks the `PROT` (Clinical Reg) bag with a correction.
+3.  **Sovereignty Rule**: A node in one bag cannot see or trigger a node in another. It reports to the **Architect**, which maintains the global "State of the Submission."
 
-## 🛠️ Predictive Signaling (Intents for the SO)
-Nodes emit `next_steps_hint` as **recommendations** for the Architect, not as direct commands.
-*   **CMC Node**: "Stability failed. Hint: `trigger:ind_safety_update`."
-*   **SO Logic**: Receives hint -> Validates against Global Strategy -> Delegates to `clinical_regulatory` Bag.
+## 🛠️ Predictive Signaling (Hints for the SO)
+Nodes emit `next_steps_hint` as tactical recommendations.
+*   **Medical Scribe**: "Visit complete. Hint: `check:daily_sync`."
+*   **Stability Agent**: "New impurity threshold met. Hint: `check:mfg_comparability`."
+*   **SO Logic**: Receives hints -> Filters through Global Strategy -> Delegates to the next Sovereign Bag.
 
 ---
 
