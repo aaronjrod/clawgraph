@@ -1,54 +1,75 @@
 \"\"\"
 ClawGraph Expert Example: Clinical Trial Operations (CTO)
-Demonstrating the @clawnode(bag=...) pattern and complex signals.
+Architecture: One Bag Per Specialist | One Node Per Task
 \"\"\"
 
 from clawgraph import clawnode, ClawOutput, Signal
 
-# --- BAG: NM5082_Clinical_Trial ---
+# --- BAG: Regulatory_Bag (Specialist: Regulatory Affairs) ---
 
 @clawnode(
-    id="patient_coordinator",
-    bag="NM5082_trial",
-    skills=["patient_coordination.md"],
-    model="gemini-1.5-flash" # Speed for daily sheet management
-)
-def manage_daily_updates(inputs: dict) -> ClawOutput:
-    # Logic: Sync Excel sheets across timezones
-    # If abnormality detected:
-    return ClawOutput(
-        signal=Signal.HOLD_FOR_HUMAN,
-        summary="Patient Site-01 abnormality detected. Pending Physician check.",
-        result_uri="s3://trials/NM5082/reports/site01_abnormality.pdf"
-    )
-
-@clawnode(
-    id="document_alignment_checker",
-    bag="NM5082_trial",
-    skills=["document_alignment_checker.md"],
-    model="claude-3-5-sonnet" # Complex reasoning for entity cross-check
-)
-def check_entity_consistency(inputs: dict) -> ClawOutput:
-    # Logic: Scan all documents for "NM5072" vs "NM5082"
-    # Found mistake:
-    return ClawOutput(
-        signal=Signal.NEED_INTERVENTION,
-        summary="Drug name mismatch: Found 'NM5072' in CMC section. Should be 'NM5082'.",
-        error_detail={"target_nodes": ["cmc_stability_checker"], "fix": "Correction of drug ID"},
-        result_uri="s3://trials/NM5082/audit/mismatch_report.json"
-    )
-
-# --- BAG: Regulatory_Submissions ---
-
-@clawnode(
-    id="regulatory_specialist",
-    bag="regulatory_submissions",
-    skills=["regulatory_affairs.md"],
+    id="benchmark_task",
+    bag="regulatory_specialist",
+    skills=["regulatory/protocol_benchmarking.md"],
     model="claude-3-5-sonnet"
 )
-def benchmark_protocol(inputs: dict) -> ClawOutput:
-    # Logic: Compare Disease A vs Disease B
+def protocol_benchmark(inputs: dict) -> ClawOutput:
+    # Logic: Benchmarking Disease A vs B
+    return ClawOutput(signal=Signal.DONE, summary="Benchmark complete.")
+
+@clawnode(
+    id="ib_justification_task",
+    bag="regulatory_specialist",
+    skills=["regulatory/ib_justification.md"],
+    model="claude-3-5-sonnet"
+)
+def write_ib_justification(inputs: dict) -> ClawOutput:
+    # Logic: Cross-disease justification
+    return ClawOutput(signal=Signal.DONE, summary="IB justified.")
+
+# --- BAG: CMC_Bag (Specialist: Chemistry, Mfg \u0026 Controls) ---
+
+@clawnode(
+    id="coa_parse_task",
+    bag="cmc_specialist",
+    skills=["cmc/coa_parsing.md"],
+    model="gemini-1.5-flash"
+)
+def parse_coa(inputs: dict) -> ClawOutput:
+    # Logic: 30 parameters + missing param detection
+    return ClawOutput(signal=Signal.DONE, summary="CoA Parsed.")
+
+@clawnode(
+    id="aggregation_task",
+    bag="cmc_specialist",
+    skills=["cmc/facility_aggregation.md"],
+    model="claude-3-5-sonnet"
+)
+def aggregate_facilities(inputs: dict) -> ClawOutput:
+    # Logic: multi-facility variance alignment
+    return ClawOutput(signal=Signal.DONE, summary="Data aggregated.")
+
+# --- BAG: Patient_Ops_Bag (Specialist: Clinical Trial Ops) ---
+
+@clawnode(
+    id="doc_integrity_task",
+    bag="patient_ops",
+    skills=["patient_ops/document_checker.md"],
+    model="claude-3-5-sonnet"
+)
+def check_document_alignment(inputs: dict) -> ClawOutput:
+    # Logic: Catching NM5072 vs NM5082 mismatches
     return ClawOutput(
-        signal=Signal.DONE,
-        summary="Protocol benchmark complete. Justification for Disease B added to IB."
+        signal=Signal.NEED_INTERVENTION, 
+        summary="NM5072 found in NM5082 dossier. Escalating to SO."
     )
+
+@clawnode(
+    id="sheet_sync_task",
+    bag="patient_ops",
+    skills=["patient_ops/daily_sheet_sync.md"],
+    model="gemini-1.5-flash"
+)
+def sync_daily_sheets(inputs: dict) -> ClawOutput:
+    # Logic: Global timezone Excel sync
+    return ClawOutput(signal=Signal.DONE, summary="Excel sync complete.")

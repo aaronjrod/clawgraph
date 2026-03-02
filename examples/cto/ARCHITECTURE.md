@@ -1,63 +1,65 @@
-# CTO High-Fidelity Architecture
+# CTO High-Fidelity Architecture (Refined)
 
-This document visualizes the **Sovereign Workspace** in a production Clinical Trial environment.
+This document visualizes the **Specialist-Bag** architecture of ClawGraph.
 
-## 👁️ The Looming Super-Orchestrator
-In ClawGraph, the Super-Orchestrator is the **Architect**. It exists "above" the runtime, constantly observing signals and repairing the bag.
+## 👁️ The Specialist Tier
+In this model, each clinical specialist group operates within its own **Sovereign Workspace (Bag)**. The Architect (Super-Orchestrator) coordinates across these specialist boundaries.
 
 ```mermaid
 graph TD
-    subgraph "The Architect (Looming)"
-        SO[Antigravity / Lead Agent]
+    subgraph "The Architect (Architect/Antigravity)"
+        SO[RA Lead / Clinical Director]
     end
 
-    SO -.->|Audit / Repair| BAG_OP
-    SO -.->|Audit / Repair| BAG_REG
+    SO -- "audit / repair" --> REG_BAG
+    SO -- "audit / repair" --> CMC_BAG
+    SO -- "audit / repair" --> OPS_BAG
 
-    subgraph "Clinical Ops BAG (Workflow: NM5082_Trial)"
-        OR_OP[Orchestrator: Ops Hub]
-        subgraph "Spokes (Agents)"
-            PC[Patient Coordinator]
-            LAB[Lab Specialist]
-            CMC[CMC Specialist]
-        end
-        OR_OP --- PC
-        OR_OP --- LAB
-        OR_OP --- CMC
+    subgraph REG_BAG ["Regulatory Specialist Bag"]
+        OR_REG[Tactical Hub]
+        N_REG1[Protocol Benchmarking Node]
+        N_REG2[IB Justification Node]
+        N_REG3[Submission Vetting Node]
+        OR_REG --- N_REG1
+        OR_REG --- N_REG2
+        OR_REG --- N_REG3
     end
 
-    subgraph "Regulatory BAG (Workflow: FDA_Submission)"
-        OR_REG[Orchestrator: Submission Hub]
-        subgraph "Spokes (Agents)"
-            RA[Reg Affairs]
-            CHK[Alignment Checker]
-            MKT[Marketing]
-        end
-        OR_REG --- RA
-        OR_REG --- CHK
-        OR_REG --- MKT
+    subgraph CMC_BAG ["CMC Specialist Bag"]
+        OR_CMC[Tactical Hub]
+        N_CMC1[CoA Parsing Node]
+        N_CMC2[Facility Aggregation Node]
+        OR_CMC --- N_CMC1
+        OR_CMC --- N_CMC2
     end
 
-    BAG_OP -- "Tier 3: Patient Data" --> BAG_REG
-    CHK -- "audit NM5082 consistency" --> BAG_OP
+    subgraph OPS_BAG ["Patient Ops Bag"]
+        OR_OPS[Tactical Hub]
+        N_OPS1[Daily Sheet Sync Node]
+        N_OPS2[Abnormality Triage Node]
+        N_OPS3[Document Integrity Node]
+        OR_OPS --- N_OPS1
+        OR_OPS --- N_OPS2
+        OR_OPS --- N_OPS3
+    end
+
+    OPS_BAG -- "Site Abnormalities" --> REG_BAG
+    REG_BAG -- "Protocol Updates" --> CMC_BAG
 ```
 
-## 🚥 Conceptual signals HUD (The UI)
+## 🚥 Specialist HUD View
 
-The **SignalManager** powers a real-time dashboard. In this expert view, the Architect sees the health of the entire multi-bag operation.
-
-| Agent | Status | Last Signal | Summary |
-| :--- | :--- | :--- | :--- |
-| **RA Specialist** | 🟢 IDLE | `DONE` | Clinical protocol benchmarked for Disease B. |
-| **CMC Stability** | 🟡 RUNNING | `WORKING` | Processing CoA from Facility-04. |
-| **Alignment Checker**| 🔴 ALERT | `NEED_INTERVENTION` | **NM5072** found in folder NM5082. |
-| **Patient Coord** | 🟢 IDLE | `WAIT_FOR_HUMAN` | Deviation report ready for Dr. review. |
+| Bag | Specialist | Health | Last Major Signal | Task in Progress |
+| :--- | :--- | :--- | :--- | :--- |
+| **Regulatory** | RA Specialist | 🟢 OK | `DONE` | IB Justification |
+| **CMC** | CMC Specialist | 🟡 RUNNING | `WORKING` | CoA Aggregation |
+| **Patient Ops** | Clinical Coord| 🔴 ALERT | `NEED_INTERVENTION`| **Document Alignment** |
 
 ---
 
-## 💎 The "Document Checker" Breakthrough
-The **Alignment Checker** node is a specialized ClawGraph agent that bridges the gap between different teams.
-1. It queries the `nm_identifier` from the Bag metadata.
-2. It parallel-scans the PDF archive.
-3. If it finds a typo (e.g., 5072 instead of 5082), it sends a `NEED_INTERVENTION` signal.
-4. The **Architect (SO)** receives the alert, identifies the offending nodes, and re-triggers them with a fix.
+## 🛠️ Task-Level Atomic Skills
+Each node in a bag is mapped to a highly specific skill file. For example, in the **Patient Ops Bag**, the `Document Integrity Node` uses:
+- **Skill**: [`document_checker.md`](skills/patient_ops/document_checker.md)
+- **Goal**: Specifically catch drug identifier mismatches (NM5072 vs NM5082).
+
+This separation ensures that if the FDA changes a vetting rule, the Architect only needs to swap out one `.md` skill file in the **Regulatory Bag**, leaving the rest of the clinical system untouched.

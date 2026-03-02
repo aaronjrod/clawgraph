@@ -2,7 +2,7 @@
 
 This use case demonstrates how **ClawGraph** manages the extreme complexity of Clinical Trial Operations (CTO) and Regulatory Affairs (RA). It showcases the "Sovereign Workspace" in a high-stakes, multi-specialist environment where zero errors are tolerated.
 
-## 📁 The "Clinical Pipeline" Bag Architecture
+## 📁 The "Specialist-Bag" Architecture
 
 ```mermaid
 graph TD
@@ -10,31 +10,26 @@ graph TD
         SO[RA Lead / Antigravity]
     end
 
-    subgraph "The CTO Bag (Dynamic Agents)"
-        PC["Patient Coordinator (Agent)"]
-        RS["Regulatory Specialist (Agent)"]
-        CMC["CMC Specialist (Agent)"]
-        IM["Inventory Manager (Agent)"]
-        AG["Aggregator: Site Reports"]
+    subgraph "Specialist Bags (Workspaces)"
+        direction LR
+        REG_BAG[Regulatory Specialist Bag]
+        CMC_BAG[CMC Specialist Bag]
+        OPS_BAG[Patient Ops Bag]
     end
 
-    subgraph "Orchestrator (Tactical Hub)"
-        OR[CTO Hub]
-    end
+    SO -- "audit / repair" --> REG_BAG
+    SO -- "audit / repair" --> CMC_BAG
+    SO -- "audit / repair" --> OPS_BAG
 
-    SO -- "audit / edit skills" --> CTO_Bag
-    OR -- "DONE / FAIL / INFO" --> RS
-    OR -- "WAIT_FOR_HUMAN" --> PC
-    PC -- "upload source doc" --> RS
-    RS -- "compare vs protocol" --> OR
-    IM -- "inventory drift" --> OR
+    REG_BAG -.-> OPS_BAG
+    CMC_BAG -.-> OPS_BAG
 ```
 
 ---
 
-## 🎭 Agent Profiles & Skill Definitions
+## 🎭 Specialist Bags & Task Nodes
 
-Each node in the CTO Bag is a full Agent with dedicated skills and LLM optimization.
+In the "Sovereign Workspace" model, each specialist has their own bag. Nodes are atomic tasks within that specialist's domain.
 
 ### 1. The Regulatory Specialist (RS)
 - **Role**: Competitive analysis, protocol benchmarking, and FDA submission vetting.
