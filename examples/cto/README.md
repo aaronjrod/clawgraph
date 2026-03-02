@@ -3,66 +3,55 @@
 This document visualizes the **Specialist-Bag** hierarchy with granular task-level telemetry and tool authorization.
 
 ## 👁️ The Looming Architect View
-The Super-Orchestrator (Lead Agent) monitors multiple **Sovereign Workspaces (Bags)**. Each specialist is a first-class agent responsible for their autonomous bag.
+The Super-Orchestrator manages a **6-Bag Sovereign Architecture**, coordinating between regulatory strategy, technical CMC data, and granular clinical operations.
 
 ```mermaid
 graph TD
-    subgraph "Architect (Observation Tier)"
-        SO[RA Lead / Clinical Director]
+    subgraph "Architect (Super-Orchestrator)"
+        SO[Clinical Lead / Global Director]
     end
 
-    SO -- "audit_node()" --> REG_BAG
-    SO -- "audit_node()" --> CMC_BAG
-    SO -- "re-trigger_bag()" --> OPS_BAG
+    SO --- CLIN_REG
+    SO --- CMC_REG
+    SO --- CLIN_OPS
+    SO --- REG_OPS
+    SO --- STRATEGY
+    SO --- LABELING
 
-    subgraph REG_BAG ["Regulatory Specialist Bag"]
-        OR_REG[Tactical Hub]
-        N_REG1[Protocol Benchmarking]
-        N_REG2[IB Justification]
-        OR_REG --- N_REG1
-        OR_REG --- N_REG2
+    subgraph CLIN_REG ["Clinical Regulatory Bag"]
+        IND[IND Submissions]
+        PROT[Protocol Development]
+        IB[Investigator Brochure]
     end
 
-    subgraph CMC_BAG ["CMC Specialist Bag"]
-        OR_CMC[Tactical Hub]
-        N_CMC1[CoA Parsing]
-        N_CMC2[Facility Aggregation]
-        OR_CMC --- N_CMC1
-        OR_CMC --- N_CMC2
+    subgraph CMC_REG ["CMC Regulatory Bag"]
+        MOD3[Module 3 Tech Docs]
+        STAB[Stability Trending]
+        VAL[Process Validation]
     end
 
-    subgraph OPS_BAG ["Patient Ops Bag"]
-        OR_OPS[Tactical Hub]
-        N_OPS1[Daily Sheet Sync]
-        N_OPS2[Document Integrity]
-        N_OPS3[Abnormality Triage]
-        OR_OPS --- N_OPS1
-        OR_OPS --- N_OPS2
-        OR_OPS --- N_OPS3
+    subgraph CLIN_OPS ["Clinical Trial Ops (Daily)"]
+        SYNC[Patient Tracking Sync]
+        ONB[New Patient Onboarding]
+        INV[Lab Invoice Vetting]
+        INT[Document Integrity Checker]
     end
 ```
 
-## 🚥 Granular Task HUD (Live Telemetry)
-The Architect sees the specific signal from every task-node, not just the high-level Bag status.
+## 🚥 Cross-Bag Interrelationships (Super-Orchestrator Logic)
+ClawGraph excels at the "Feedback Loops" that humans often miss:
 
-| Specialist Bag | Task Node | Status | Signal | Latest Summary |
-| :--- | :--- | :--- | :--- | :--- |
-| **Regulatory** | `protocol_benchmark` | 🟢 IDLE | `DONE` | Benchmark complete for Disease B. |
-| **Regulatory** | `ib_justification` | 🟡 RUNNING | `WORKING` | Aligning PK data for NM5082. |
-| **CMC** | `coa_parsing` | 🟢 IDLE | `DONE` | Facility-04 parsed (30/30 params). |
-| **CMC** | `data_aggregator` | 🟡 RUNNING | `WORKING` | Variance within 2% threshold. |
-| **Patient Ops** | `document_integrity`| 🔴 ALERT | `NEED_INTERVENTION`| **Typos: Found NM5072 in Folder.** |
-| **Patient Ops** | `abnormal_triage` | 🟢 IDLE | `DONE` | 3 abnormalities mapped to mechanisms. |
+1.  **Technical Pulse -> Clinical Update**: If `STAB` (CMC Bag) reports impurity drift, the **Architect** re-triggers `IND` (Clinical Reg) to update the safety justification.
+2.  **Ops Feedback -> Protocol Change**: If `INT` (Clinical Ops) finds that Site Doctors can't fill the narration form in time, the **Architect** alerts `PROT` (Clinical Reg) to amend the protocol.
+3.  **Entity Alignment**: If a patient data change occurs, the Architect signals **all** bags to run their `Document Integrity` nodes to ensure NM-class IDs match (e.g., catching **NM5072** vs **NM5082**).
 
-## 🛠️ Capability Matrix (Tool Authorization)
-Tools are **deterministic capabilities**. Different Specialist Bags have different aothorizations.
-
-| Bag | Authorized Tools (Python Impls) | Description |
+## 🛠️ Capability Matrix (Refined)
+| Bag | Skill Scope | Authorized Tools |
 | :--- | :--- | :--- |
-| **Regulatory** | [`google_search.py`](tools/google_search.py), [`pdf_parser.py`](tools/pdf_parser.py)| Competitor benchmarks & FDA vetting. |
-| **CMC** | [`excel_bridge.py`](tools/excel_bridge.py), [`stats_calc.py`](tools/stats_calc.py) | Batch log parsing & stability math. |
-| **Patient Ops** | [`gmail_api.py`](tools/gmail_api.py) | CRO/Doctor communication. |
-| **Global** | [`notary_log.py`](tools/notary_log.py) | Cryptographic audit ledger. |
+| **Clinical Reg** | IND, Protocols, IB | `pdf_parser.py`, `notary_log.py` |
+| **CMC Reg** | Module 3, Stability | `excel_bridge.py`, `stats_calc.py` |
+| **Clinical Ops** | Daily Sync, Lab Vetting | `gmail_api.py`, `google_search.py` |
+| **Reg Ops** | eCTD, Formatting | `pdf_parser.py` |
 
 ---
 
