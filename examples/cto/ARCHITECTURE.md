@@ -3,7 +3,7 @@
 This document visualizes the **Specialist-Bag** hierarchy with granular task-level telemetry and tool authorization.
 
 ## 👁️ The Looming Architect View
-The Super-Orchestrator (Lead Agent) monitors multiple **Sovereign Workspaces (Bags)**. Each specialist (Regulatory, CMC, Ops) is a first-class agent responsible for their autonomous bag.
+The Super-Orchestrator (Lead Agent) monitors multiple **Sovereign Workspaces (Bags)**. Each specialist is a first-class agent responsible for their autonomous bag.
 
 ```mermaid
 graph TD
@@ -57,12 +57,12 @@ The Architect sees the specific signal from every task-node, not just the high-l
 ## 🛠️ Capability Matrix (Tool Authorization)
 Tools are **deterministic capabilities**. Different Specialist Bags have different aothorizations.
 
-| Bag | Authorized Tools | Description |
+| Bag | Authorized Tools (Python Impls) | Description |
 | :--- | :--- | :--- |
-| **Regulatory** | `google_search`, `pdf_parser`| For benchmarking vs. competitors and reading FDA docs. |
-| **CMC** | `excel_bridge`, `stats_calc` | For parsing batch logs and calculating stability averages. |
-| **Patient Ops** | `gmail_api`, `source_doc_scribe` | For communicating with site-doctors and narrating visits. |
-| **Global** | `notary_log` | For high-level auditability and physician signature requests. |
+| **Regulatory** | [`google_search.py`](tools/google_search.py), [`pdf_parser.py`](tools/pdf_parser.py)| Competitor benchmarks & FDA vetting. |
+| **CMC** | [`excel_bridge.py`](tools/excel_bridge.py), [`stats_calc.py`](tools/stats_calc.py) | Batch log parsing & stability math. |
+| **Patient Ops** | [`gmail_api.py`](tools/gmail_api.py) | CRO/Doctor communication. |
+| **Global** | [`notary_log.py`](tools/notary_log.py) | Cryptographic audit ledger. |
 
 ---
 

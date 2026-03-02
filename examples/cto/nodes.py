@@ -1,9 +1,18 @@
-\"\"\"
+"""
 ClawGraph Expert Example: Clinical Trial Operations (CTO)
 Architecture: One Bag Per Specialist | One Node Per Task | Explicit Tool Authorization
-\"\"\"
+"""
 
 from clawgraph import clawnode, ClawOutput, Signal
+
+# --- Specialist Tools (Mock Imports) ---
+# Each bag is authorized for specific tools defined in examples/cto/tools/
+# from tools.google_search import GoogleSearch
+# from tools.pdf_parser import PDFParser
+# from tools.excel_bridge import ExcelBridge
+# from tools.stats_calc import StatsCalc
+# from tools.gmail_api import GmailAPI
+# from tools.notary_log import NotaryLog
 
 # --- BAG: Regulatory_Bag (Specialist: Regulatory Affairs) ---
 
