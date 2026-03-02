@@ -4,11 +4,12 @@ The `ClawNode` is the atomic unit of the Sovereign Workspace. It is an **Agent**
 
 ## 🛠️ Definition & Metadata
 
-A node is defined using the `@clawnode` decorator, which registers it into the `BagManifest`.
+A node is defined using the `@clawnode` decorator, which registers it into a specific `ClawBag` via the `bag` parameter.
 
 ```python
 @clawnode(
     id="regulatory_specialist",
+    bag="clinical_trial_ops",     # CRITICAL: Maps the node to a specific Sovereign Workspace
     description="Analyzes clinical trial data against FDA/EMA standards.",
     provider="anthropic",        # Optional: default set at Bag level
     model="claude-3-5-sonnet",   # Optional: default set at Bag level
@@ -21,13 +22,16 @@ def analyze_compliance(inputs: dict) -> ClawOutput:
 
 ## 🧠 Node Architecture (Agentic)
 
-### 1. Provider & Model Selection
+### 1. Bag Association (`bag`)
+Nodes are no longer "orphans." They must be associated with a named `ClawBag` during decoration. This allows the Super-Orchestrator to manage multiple workflows (e.g., `clinical_ops`, `marketing_launch`, `regulatory_filing`) within the same repository without cross-talk.
+
+### 2. Provider & Model Selection
 Nodes are no longer "one model fits all." The Architect can specify:
 - **`provider`**: (e.g., `openai`, `anthropic`, `google`, `ollama`)
 - **`model`**: Specific model identifier (e.g., `gpt-4o`, `gemini-1.5-pro`).
 - **Rationale**: Optimization for cost vs. reasoning depth (e.g., use a "flash" model for PII scanning, a "pro" model for protocol benchmarking).
 
-### 2. Context Injection (Skills & Summaries)
+### 3. Context Injection (Skills & Summaries)
 When a node is invoked, the runtime constructs its system prompt from several sources:
 - **`skills/*.md`**: The runtime reads referenced skill files and appends them to the context.
 - **Architect-Defined Summary**: A high-level description of what this node's persona should be.
