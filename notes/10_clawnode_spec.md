@@ -38,10 +38,19 @@ When a node is invoked, the runtime constructs its system prompt from several so
 - **Dynamic Context**: The Architect can inject specific "Instructions of hte Day" or "Generation-time Info" into the system prompt during an `update_node` operation.
 - **Bag Inventory**: A list of *other* nodes in the bag (Tier 1 metadata only) so the agent knows who it can delegate to (via signals).
 
-### 3. Tool Integration
-Nodes can be assigned specific tools (Functions/CLI/API) that they are authorized to use.
-- **`tools`**: A list of tool identifiers available to the agent.
-- **Sandboxing**: Tools are executed in the node's local runtime context.
+### 4. Tool Integration (Capabilities)
+Nodes are authorized to use specific **Tools**.
+- **`tools`**: A list of tool identifiers (e.g., `["internet_search", "email_client"]`).
+- **Execution**: Tools are deterministic capabilities (APIs/CLI) that the agent calls.
+- **Rules**: Every tool call is intercepted by a `GuardNode` (see ARCHITECTURE.md).
+
+### 5. Skills vs. Tools (The Mental Model)
+| Component | What it is | Role |
+| :--- | :--- | :--- |
+| **Skill** | `.md` file | **Instructional Context**. Provides "how-to" and domain expertise. |
+| **Tool** | Function/API | **Capability**. The actual "hands" of the agent to perform actions. |
+
+**Example**: A Regulatory Agent has the **Skill** of knowing *how* to vet a document, but uses the **Tool** `pdf_parser` to actually read it.
 
 ### 4. Signal-Based Output
 Every node must return a `ClawOutput`, which dictates the flow of the entire Bag.
