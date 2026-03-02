@@ -68,12 +68,12 @@ graph TD
 
     %% Styling for "Impressive" look
     style SO fill:#f9f,stroke:#333,stroke-width:4px,color:#000
-    style CLIN_OPS fill:#e1f5fe,stroke:#01579b
-    style CLIN_REG fill:#e1f5fe,stroke:#01579b
-    style CMC_REG fill:#fff3e0,stroke:#e65100
-    style STRAT_LABEL fill:#f3e5f5,stroke:#4a148c
-    style REG_OPS fill:#f1f8e9,stroke:#1b5e20
-    style MARKETING fill:#fce4ec,stroke:#880e4f
+    style CLIN_OPS fill:#e1f5fe,stroke:#01579b,color:#000
+    style CLIN_REG fill:#e1f5fe,stroke:#01579b,color:#000
+    style CMC_REG fill:#fff3e0,stroke:#e65100,color:#000
+    style STRAT_LABEL fill:#f3e5f5,stroke:#4a148c,color:#000
+    style REG_OPS fill:#f1f8e9,stroke:#1b5e20,color:#000
+    style MARKETING fill:#fce4ec,stroke:#880e4f,color:#000
 ```
 
 ## 🚥 Cross-Bag Delegation (SO-Mediated Logic)
