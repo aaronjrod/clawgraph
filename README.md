@@ -1,33 +1,54 @@
 # ClawGraph 👜
+### Hierarchical Agent Orchestration for High-Stakes Workflows
 
-**ClawGraph** is a hierarchical agent orchestration framework built on [LangGraph](https://github.com/langchain-ai/langgraph). It introduces the **Sovereign Workspace** model, enabling a high-level "Super-Orchestrator" (Architect) to manage a dynamic "Bag of Nodes" through a tactical, signal-based runtime.
+**ClawGraph** is a framework built on [LangGraph](https://github.com/langchain-ai/langgraph) designed to handle the "Complexity Wall" in AI agent systems. It introduces a modular **Sovereign Workspace** model that separates high-level architectural planning from tactical execution.
 
-## 🧠 The Sovereign Workspace
-ClawGraph partitions agentic labor into three distinct tiers:
-- **The Lead Teammate (Super-Orchestrator)**: The "Coder" who builds, audits, and repairs the bag of capabilities.
-- **The Orchestrator (Runtime)**: The "Tactical Director" who manages routing, signal state, and context pruning.
-- **The Bag of Nodes (Library)**: A collection of task-specific nodes that perform atomic units of work.
+---
 
-## ✨ Key Features
-- **Signal-Based Orchestration**: Routing driven by standardized signals (`DONE`, `FAILED`, `NEED_INFO`, `HOLD_FOR_HUMAN`, `NEED_INTERVENTION`).
-- **3-Tier Progressive Disclosure**: Maintains token efficiency by loading only metadata for the Orchestrator, while keeping code and raw results available for deep audits.
-- **Lazy Compilation**: Execution graphs are compiled on-demand only when the bag's manifest version changes.
-- **Discovery-First Protocols**: Enforces a "query-before-edit" workflow for the Super-Orchestrator to prevent capability drift.
-- **Mission Control HUD**: Real-time JSON-LD snapshots of topology and transient state, including implicit data-flow links.
+## 🛑 The Problem: The "Complexity Wall"
+Most agentic systems fail as they scale. When a single agent or a simple chain tries to handle 50+ tools, complex reasoning, and long-running state, you encounter:
+- **Context Saturation**: The agent gets "lost" in its own history.
+- **Reasoning Drift**: Subtle hallucinations or incorrect tool calls compound over time.
+- **Lack of Oversight**: "Black box" execution makes it impossible for developers to debug why a long-running task failed at step 42.
+
+## ✅ The Solution: The Sovereign Workspace
+ClawGraph solves this by partitioning labor into three distinct tiers:
+
+1.  **The Architect (Super-Orchestrator)**: An intelligent agent (e.g., Claude Code) that builds, audits, and repairs the system. It writes the code for the nodes and debugs the graph.
+2.  **The Tactical Director (Orchestrator)**: A specialized runtime that doesn't "do" the work, but routes results between nodes based on standardized signals.
+3.  **The Library (Bag of Nodes)**: A dynamic collection of atomic, task-specific nodes. The Orchestrator only sees metadata (summaries); the Architect sees everything.
+
+---
+
+## 🎯 Who is this for?
+- **AI Engineers** building complex autonomous systems that require more than just a simple RAG chain.
+- **DevOps Teams** automating multi-stage security, linting, and deployment pipelines.
+- **Data Analysts** building agents that need to perform long-running, auditable research and synthesis.
+
+## 🌟 What it enables
+- **Massive Scale**: Orchestrate 50+ specialized nodes in a single workflow without context window saturation.
+- **Deep Auditability**: Every node transition is logged via pointers. Audit logic only when things look "wrong."
+- **Self-Healing**: The Super-Orchestrator can detect failures and "hot-fix" the bag by registering or updating nodes in real-time.
+- **Human-in-the-Loop**: Native suspension and resumption for sensitive decisions.
+
+## 🚀 Use Cases
+- **Autonomous Software Engineering**: One node scans for secrets, another runs tests, a third refactors code—all coordinated by a tactical hub that reports back to an architect.
+- **Persistent Compliance Monitoring**: A heartbeat process that wakes up every hour, inventories its "bag" of capability, and executes specialized checks against a data lake.
+- **Complex Customer Support**: Routing deep research tasks to specialized workers while maintaining a lean, high-level context for the customer-facing director.
+
+---
 
 ## 📂 Project Organization
-Initial project specifications and implementation plans are located in the `notes/` directory:
+Full specifications and implementation plans are in the `notes/` directory:
 
-1. [01_PLAN.md](notes/01_PLAN.md): Original project goals and brainstorming.
-2. [02_BRS.md](notes/02_BRS.md): Business requirements and success metrics.
-3. [03_FRS.md](notes/03_FRS.md): Functional specs and API definitions.
-4. [05_ARCHITECTURE.md](notes/05_ARCHITECTURE.md): Technical deep-dive into the hub-and-spoke model.
-5. [06_patterns.md](notes/06_patterns.md): Canonical node design and Super-Orchestrator skills.
-6. [08_walkthrough.md](notes/08_walkthrough.md): Comprehensive project walkthrough and implementation roadmap.
-7. [09_library_structure.md](notes/09_library_structure.md): Projected file and module organization.
+1. [02_BRS.md](notes/02_BRS.md): Business requirements and success metrics.
+2. [03_FRS.md](notes/03_FRS.md): Functional specs and API definitions.
+3. [05_ARCHITECTURE.md](notes/05_ARCHITECTURE.md): Technical deep-dive into the hub-and-spoke model.
+4. [08_walkthrough.md](notes/08_walkthrough.md): Implementation roadmap.
+5. [09_library_structure.md](notes/09_library_structure.md): Codebase organization.
 
-## 🛠️ Implementation Roadmap
-We are currently moving through the following phases:
+## 🛠️ Implementation Phases
+We are currently in **Phase 0 (Design Complete)**.
 - **Phase 1**: Foundation & State (Schemas & Managers)
 - **Phase 2**: Tactical Hub (LangGraph Orchestrator)
 - **Phase 3**: The Architect's Tools (Node CRUD & Auditing)
@@ -35,4 +56,4 @@ We are currently moving through the following phases:
 - **Phase 5**: Production & Hardening (Persistence & HITL)
 
 ## 📜 License
-This project is licensed under the **Apache License 2.0**.
+Licensed under the **Apache License 2.0**.
