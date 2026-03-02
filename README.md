@@ -28,7 +28,7 @@ ClawGraph solves this by partitioning labor into three distinct tiers:
 ## 🌟 What it enables
 - **Massive Scale**: Orchestrate 50+ specialized nodes in a single workflow without context window saturation.
 - **Deep Auditability**: Every node transition is logged via pointers. Audit logic only when things look "wrong."
-- **Self-Healing**: The Super-Orchestrator can detect failures and "hot-fix" the bag by registering or updating nodes in real-time.
+- **Self-Healing & Evolution**: The Super-Orchestrator can detect failures and "hot-fix" the bag by registering or updating nodes in real-time. This enables **Coding Agents to build, test, and reinforce their own workflows** autonomously.
 - **Human-in-the-Loop**: Native suspension and resumption for sensitive decisions.
 
 ## 🚀 Use Cases
