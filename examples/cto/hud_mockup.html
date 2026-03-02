@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClawGraph | Clinical Trial Director HUD</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-blue: #58a6ff;
+            --status-done: #3fb950;
+            --status-working: #d29922;
+            --status-failed: #f85149;
+            --status-hold: #bc8cff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .logo span {
+            color: var(--accent-blue);
+        }
+
+        .hud-status {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-badge {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .stat-badge span {
+            font-weight: bold;
+            color: var(--accent-blue);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .domain-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .domain-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .domain-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .node-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .node-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+        }
+
+        .node-name {
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Status Styles */
+        .done { background-color: var(--status-done); box-shadow: 0 0 8px var(--status-done); }
+        .working { background-color: var(--status-working); box-shadow: 0 0 8px var(--status-working); }
+        .failed { background-color: var(--status-failed); box-shadow: 0 0 8px var(--status-failed); }
+        .hold { background-color: var(--status-hold); box-shadow: 0 0 8px var(--status-hold); }
+
+        .label-done { background: rgba(63, 185, 80, 0.15); color: var(--status-done); border: 1px solid var(--status-done); }
+        .label-working { background: rgba(210, 153, 34, 0.15); color: var(--status-working); border: 1px solid var(--status-working); }
+        .label-failed { background: rgba(248, 81, 73, 0.15); color: var(--status-failed); border: 1px solid var(--status-failed); }
+        .label-hold { background: rgba(188, 140, 255, 0.15); color: var(--status-hold); border: 1px solid var(--status-hold); }
+
+        .director-log {
+            margin-top: 30px;
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            height: 200px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        .log-ts { color: var(--text-dim); margin-right: 10px; }
+        .log-signal { color: var(--accent-blue); font-weight: bold; margin-right: 10px; }
+        .log-msg { color: var(--text-main); }
+        .log-hint { color: var(--status-hold); font-style: italic; margin-left: 10px; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">CLAW<span>GRAPH</span> | CLINICAL DIRECTOR HUD</div>
+        <div class="hud-status">
+            <div class="stat-badge">NODES ACTIVE: <span>22</span></div>
+            <div class="stat-badge">STATE: <span>HEALTHY</span></div>
+            <div class="stat-badge">UPTIME: <span>14:32:05</span></div>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <!-- Domain: Clinical Operations -->
+        <div class="domain-card">
+            <div class="domain-header">
+                <span class="domain-title" style="color: #58a6ff;">Clinical Ops</span>
+                <span class="status-label label-working">HEARTBEAT active</span>
+            </div>
+            <ul class="node-list">
+                <li class="node-item">
+                    <span class="node-name">Patient Tracking Sync</span>
+                    <span class="status-label label-done"><span class="status-dot done"></span>DONE</span>
+                </li>
+                <li class="node-item">
+                    <span class="node-name">Master Integrity Checker</span>
+                    <span class="status-label label-failed"><span class="status-dot failed"></span>MISMATCH</span>
+                </li>
+                <li class="node-item">
+                    <span class="node-name">Lab Invoice Vetting</span>
+                    <span class="status-label label-working"><span class="status-dot working"></span>ACTIVE</span>
+                </li>
+                <li class="node-item">
+                    <span class="node-name">Scribe Narration</span>
+                    <span class="status-label label-done"><span class="status-dot done"></span>DONE</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Domain: Clinical Regulatory -->
+        <div class="domain-card">
+            <div class="domain-header">
+                <span class="domain-title" style="color: #79c0ff;">Clinical Regulatory</span>
+                <span class="status-label label-done">SYNCED</span>
+            </div>
+            <ul class="node-list">
+                <li class="node-item">
+                    <span class="node-name">IND Submission Mgr</span>
+                    <span class="status-label label-done"><span class="status-dot done"></span>FILED</span>
+                </li>
+                <li class="node-item">
+                    <span class="node-name">Protocol Development</span>
+                    <span class="status-label label-hold"><span class="status-dot hold"></span>REGEN</span>
+                </li>
+                <li class="node-item">
+                    <span class="node-name">Investigator Brochure</span>
+                    <span class="status-label label-done"><span class="status-dot done"></span>DONE</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Domain: CMC Regulatory -->
+        <div class="domain-card">
+            <div class="domain-header">
+                <span class="domain-title" style="color: #ffa657;">CMC Regulatory</span>
+                <span class="status-label label-failed">TREND ALERT</span>
+            </div>
+            <ul class="node-list">
+                <li class="node-item">
+                    <span class="node-name">Stability Trending</span>
+                    <span class="status-label label-failed"><span class="status-dot failed"></span>DRIFT</span>
+                </li>
+                <li class="node-item">
+                    <span class="node-name">Module 3 Tech Docs</span>
+                    <span class="status-label label-working"><span class="status-dot working"></span>UPDATING</span>
+                </li>
+                <li class="node-item">
+                    <span class="node-name">Substance Validation</span>
+                    <span class="status-label label-done"><span class="status-dot done"></span>DONE</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Domain: Strategy & Labeling -->
+        <div class="domain-card">
+            <div class="domain-header">
+                <span class="domain-title" style="color: #d2a8ff;">Strategy & Labeling</span>
+                <span class="status-label label-working">NEGOTIATING</span>
+            </div>
+            <ul class="node-list">
+                <li class="node-item">
+                    <span class="node-name">Risk Assessment</span>
+                    <span class="status-label label-done"><span class="status-dot done"></span>DONE</span>
+                </li>
+                <li class="node-item">
+                    <span class="node-name">Core Data Sheet (CCDS)</span>
+                    <span class="status-label label-working"><span class="status-dot working"></span>ACTIVE</span>
+                </li>
+                <li class="node-item">
+                    <span class="node-name">Patient Leaflets (USPI)</span>
+                    <span class="status-label label-hold"><span class="status-dot hold"></span>PENDING</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Domain: Regulatory Ops -->
+        <div class="domain-card">
+            <div class="domain-header">
+                <span class="domain-title" style="color: #7ee787;">Reg Ops</span>
+                <span class="status-label label-hold">PUBLISHING PAUSED</span>
+            </div>
+            <ul class="node-list">
+                <li class="node-item">
+                    <span class="node-name">eCTD Publishing</span>
+                    <span class="status-label label-hold"><span class="status-dot hold"></span>HALT</span>
+                </li>
+                <li class="node-item">
+                    <span class="node-name">Submission Formatting</span>
+                    <span class="status-label label-done"><span class="status-dot done"></span>DONE</span>
+                </li>
+                <li class="node-item">
+                    <span class="node-name">Global Coordination</span>
+                    <span class="status-label label-working"><span class="status-dot working"></span>WAITING</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Domain: Marketing -->
+        <div class="domain-card">
+            <div class="domain-header">
+                <span class="domain-title" style="color: #ff7b72;">Global Marketing</span>
+                <span class="status-label label-done">READY</span>
+            </div>
+            <ul class="node-list">
+                <li class="node-item">
+                    <span class="node-name">Press Release Writer</span>
+                    <span class="status-label label-done"><span class="status-dot done"></span>DRAFTED</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="director-log">
+        <div class="log-entry">
+            <span class="log-ts">[21:55:01]</span>
+            <span class="log-signal">SIGNAL:FAILED</span>
+            <span class="log-msg">CMC_Stability: Impurity drift 0.3% > target 0.1%.</span>
+            <span class="log-hint">HINT: check:safety_update</span>
+        </div>
+        <div class="log-entry">
+            <span class="log-ts">[21:55:04]</span>
+            <span class="log-signal">SIGNAL:NEED_INTERVENTION</span>
+            <span class="log-msg">Integrity_Checker: NM5072 mismatch found in Dossier v2.4.</span>
+            <span class="log-hint">HINT: trigger:regen_protocol</span>
+        </div>
+        <div class="log-entry">
+            <span class="log-ts">[21:56:10]</span>
+            <span class="log-signal">SIGNAL:DONE</span>
+            <span class="log-msg">Patient_Sync: Global timezone handover complete.</span>
+            <span class="log-hint">HINT: check:new_enrollment</span>
+        </div>
+        <div class="log-entry">
+            <span class="log-ts">[21:58:22]</span>
+            <span class="log-signal">ORCHESTRATOR</span>
+            <span class="log-msg">Super-Orchestrator re-routing Clin_Reg to Protocol_Development.</span>
+        </div>
+    </div>
+
+</body>
+</html>
