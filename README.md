@@ -9,7 +9,7 @@
 Most agentic systems fail as they scale. When a single agent or a simple chain tries to handle 50+ tools, complex reasoning, and long-running state, you encounter:
 - **Context Saturation**: The agent gets "lost" in its own history.
 - **Reasoning Drift**: Subtle hallucinations or incorrect tool calls compound over time.
-- **Troubleshooting Debt**: Manually-built multi-agent systems (MAS) are notoriously brittle. They take weeks to define and even longer to troubleshoot when they break.
+- **Troubleshooting Debt**: Manually-built multi-agent systems (MAS) are notoriously brittle. They take weeks to define, and even longer to troubleshoot and capture the long tail of edge cases.
 
 ## ✅ The Solution: The Sovereign Workspace
 ClawGraph solves this by shifting the burden of system maintenance from the human to the AI. Instead of you manually wiring every edge, you provide the goal to the **Architect**, who then manages the troubleshooting, testing, and reinforcement of the agent bag for you.
