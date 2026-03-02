@@ -1,4 +1,4 @@
-# CTO High-Fidelity Architecture (Expert-View)
+# CTO High-Fidelity README (Expert-View)
 
 This document visualizes the **Specialist-Bag** hierarchy with granular task-level telemetry and tool authorization.
 

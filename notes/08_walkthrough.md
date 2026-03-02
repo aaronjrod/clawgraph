@@ -12,7 +12,7 @@ The following core documents have been organized in the `notes/` directory:
 - [04_requirements.md](file:///Users/aaronrodrigues/projects/clawgraph/notes/04_requirements.md): High-level system philosophy and scale constraints.
 - [06_patterns.md](file:///Users/aaronrodrigues/projects/clawgraph/notes/06_patterns.md): Canonical node patterns, Super-Orchestrator skills, and HUD schemas.
 - [07_use_cases.md](file:///Users/aaronrodrigues/projects/clawgraph/notes/07_use_cases.md): High-level application scenarios.
-- [examples/cto/ARCHITECTURE.md](file:///Users/aaronrodrigues/projects/clawgraph/examples/cto/ARCHITECTURE.md): Specialist-Bag hierarchy and Tool Matrix.
+- [examples/cto/README.md](file:///Users/aaronrodrigues/projects/clawgraph/examples/cto/README.md): Specialist-Bag hierarchy and Tool Matrix.
 - [examples/cto/tools/](file:///Users/aaronrodrigues/projects/clawgraph/examples/cto/tools/): Mock Python implementations of deterministic capabilities.
 
 ---
