@@ -238,10 +238,9 @@ To prevent "ghost hangs" where a node crashes without signaling, the Orchestrato
 
 ### 10.4 Signal Escalation & Routing
 The Orchestrator manages the transition from tactical blocks to architect-level interventions:
-- **Policy Inheritance**: Escalation rules (TTL/Retries) are resolved hierarchically:
-    1.  **Node Level**: Specific overrides in the node manifest.
-    2.  **Bag Level**: Default policy for all nodes in the workspace.
-    3.  **System Level**: Orchestrator-wide fail-safes.
+- **Policy Inheritance**: Escalation rules (TTL/Retries) are resolved hierarchically (Node > Bag > System).
+- **TTL Enforcement**: If a `NEED_INFO` status remains unresolved beyond its TTL, the Orchestrator automatically re-emits the status as `NEED_INTERVENTION`.
+- **Retry Exhaustion**: If a node's retry budget for a specific failure class is exhausted, it is auto-promoted to `NEED_INTERVENTION`.
 - **Targeted Routing**: `NEED_INFO` signals include a `target` attribute. The Orchestrator routes these accordingly (e.g., to the User's dashboard or the Super-Orchestrator's planning context). If a target is `EITHER`, the Orchestrator defaults to the Super-Orchestrator for autonomous resolution.
 
 ### 10.5 Progressive Disclosure & 3-Tier Node Architecture
