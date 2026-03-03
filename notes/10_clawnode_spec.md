@@ -27,6 +27,7 @@ A node is defined using the `@clawnode` decorator, which registers it into a spe
 | **`bag`** | `str` | The name of the Sovereign Workspace this node belongs to. |
 | **`skills`** | `list[str]` | List of `.md` skill files to inject into the system prompt. |
 | **`requires`** | `list[str]` | **Prerequisite IDs** from the `document_archive` required before this node can fire. |
+| **`escalation_policy`** | `dict` | (Optional) `{ttl_seconds: int, max_retries: int}`. Overrides bag-level defaults. |
 def analyze_compliance(inputs: dict) -> ClawOutput:
     ...
 ```
@@ -73,8 +74,9 @@ Every node must return a `ClawOutput`, which dictates the flow of the entire Bag
 | :--- | :--- | :--- |
 | **`signal`** | `Signal` | `DONE`, `FAILED`, `NEED_INFO`, `WORKING`, `HOLD_FOR_HUMAN`. |
 | **`summary`** | `str` | Plain-text explanation for the Architect/HUD. |
+| **`info_request`** | `dict` | **Mandatory on `NEED_INFO`**. Includes `{question: str, target: SO|USER|EITHER, context: str}`. |
 | **`result_uri`** | `str` | (Optional) Pointer to Tier 3 results (S3, local path, etc). |
-| **`error_detail`** | `dict` | **Mandatory on `FAILED`**. Must include a `failure_class` (e.g., `LOGIC_ERROR`, `TOOL_FAILURE`). See [FRS §2.2.1](file:///Users/aaronrodrigues/projects/clawgraph/notes/03_FRS.md) for enum. |
+| **`error_detail`** | `dict` | **Mandatory on `FAILED`**. Must include a `failure_class` and `orchestrator_synthesized` boolean. |
 | **`next_steps_hint`** | `list[str]` | **Recommendations for the SO**. Does NOT directly trigger other nodes. |
 
 > [!TIP]

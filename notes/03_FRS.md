@@ -8,7 +8,7 @@ ClawGraph is a Python library that wraps LangGraph to provide a signal-based, de
 ### 2.1 "Bag of Nodes" Management (CRUD)
 - **F-REQ-1 (Dynamic Registration)**: The system shall allow the addition of nodes or subgraphs to a "Bag" at runtime.
 - **F-REQ-2 (Edgeless Discovery)**: Nodes shall be individually addressable by name or ID without requiring pre-defined edges.
-- **F-REQ-3 (Manifest Management)**: The system shall maintain a JSON-LD manifest of all nodes in a bag, including their descriptions, input/output schemas, and optional `requires` (artifact prerequisites).
+- **F-REQ-3 (Manifest Management)**: The system shall maintain a JSON-LD manifest of all nodes in a bag, including their descriptions, input/output schemas, optional `requires` (artifact prerequisites), and optional `escalation_policy` (TTL and retry budget).
 - **F-REQ-4 (Auto-Versioning)**: The system shall automatically increment the manifest version upon any successful CRUD operation on the bag.
 - **F-REQ-5 (Graph Re-compilation)**: The system shall support on-the-fly compilation of StateGraphs whenever the bag is modified or a new job is initiated.
 
@@ -16,7 +16,7 @@ ClawGraph is a Python library that wraps LangGraph to provide a signal-based, de
 - **F-REQ-6 (Node Output Signals)**: Each node shall emit one of the following signals to the Orchestrator via `ClawOutput`:
     - `DONE`: Task completed successfully.
     - `FAILED`: Task failed irrecoverably. **MUST** include a structured `error_detail` object.
-    - `NEED_INFO`: Node is paused, waiting for clarification from any upstream actor (Super-Orchestrator or User).
+    - `NEED_INFO`: Node is paused, waiting for clarification. **MUST** include an `info_request` payload specifying the `question`, `context`, and `target` (e.g., `SO`, `USER`, or `EITHER`).
     - `HOLD_FOR_HUMAN`: Node is gated on a specific human decision (e.g., approve shell execution or document diff).
     - `NEED_INTERVENTION`: State drift or unrecoverable orchestration error; escalates to Super-Orchestrator for repair.
 
@@ -27,11 +27,13 @@ ClawGraph is a Python library that wraps LangGraph to provide a signal-based, de
     - `TOOL_FAILURE`: External API or CLI tool returned an error or timed out.
     - `GUARDRAIL_VIOLATION`: Security policy blocked a requested action.
     - `SYSTEM_CRASH`: Unhandled exception caught by the Orchestrator.
-- **F-REQ-12.2 (Standard Metadata)**: Failure payloads shall include `expected` vs `actual` values (where applicable) and optionally a `suggested_fix_hint` (plain language) to ground the Super-Orchestrator's repair logic.
+- **F-REQ-12.2 (Standard Metadata)**: Failure payloads shall include `expected` vs `actual` values (where applicable) and optionally a `suggested_fix_hint`.
+- **F-REQ-12.3 (Synthesized Flag)**: Every failure signal shall include an `orchestrator_synthesized` boolean. If `true`, the Super-Orchestrator should prioritize the `traceback` metadata over any `suggested_fix_hint`.
 
 ### 2.2.2 Signal Escalation & Auto-Recovery
 - **F-REQ-15.1 (Deterministic Escalation)**: The Orchestrator shall implement a time-and-retry-based escalation path:
-    - `NEED_INFO` signals shall have a configurable **TTL** and **Retry Budget**.
+    - `NEED_INFO` signals shall follow the `escalation_policy` defined in the manifest.
+    - **Inheritance Model**: Node-level policy overrides Bag-level policy; Bag-level policy overrides Orchestrator system defaults.
     - Upon budget exhaustion (timeout or max retries), the Orchestrator shall automatically promote the signal to `NEED_INTERVENTION`.
 - **F-REQ-15.2 (Exception Interception)**: The Orchestrator shall wrap all node executions in an exception handler. If a node crashes without returning a `ClawOutput`, the Orchestrator shall synthesize a `FAILED` signal with a `SYSTEM_CRASH` failure class and include the traceback in the `error_detail`.
 
