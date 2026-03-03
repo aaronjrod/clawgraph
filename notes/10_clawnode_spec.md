@@ -14,8 +14,19 @@ A node is defined using the `@clawnode` decorator, which registers it into a spe
     provider="anthropic",        # Optional: default set at Bag level
     model="claude-3-5-sonnet",   # Optional: default set at Bag level
     skills=["fda_compliance.md", "protocol_benchmarking.md"],
-    tags=["regulatory", "compliance"]
+    tags=["regulatory", "compliance"],
+    requires=["clinical_data_source"]   # OPTIONAL: Explicit artifact dependencies
 )
+```
+
+### 0.1 Metadata Attributes
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| **`id`** | `str` | Unique identifier for the node within the bag. |
+| **`description`** | `str` | High-level persona/capability summary for the Orchestrator. |
+| **`bag`** | `str` | The name of the Sovereign Workspace this node belongs to. |
+| **`skills`** | `list[str]` | List of `.md` skill files to inject into the system prompt. |
+| **`requires`** | `list[str]` | **Prerequisite IDs** from the `document_archive` required before this node can fire. |
 def analyze_compliance(inputs: dict) -> ClawOutput:
     ...
 ```
@@ -37,6 +48,9 @@ When a node is invoked, the runtime constructs its system prompt from several so
 - **Architect-Defined Summary**: A high-level description of what this node's persona should be.
 - **Dynamic Context**: The Architect can inject specific "Instructions of hte Day" or "Generation-time Info" into the system prompt during an `update_node` operation.
 - **Bag Inventory**: A list of *other* nodes in the bag (Tier 1 metadata only) so the agent knows who it can delegate to (via signals).
+
+### 3.1 Skill Composition (Inheritance)
+To implement "Base Class" behaviors (e.g., a generic `DocumentManager`), the Architect can compose skills. The runtime processes the `skills` list sequentially, allowing a `base_editor.md` to be specialized by `clinical_standards.md`. This reinforces the Sovereign Workspace by keeping domain-agnostic logic reusable.
 
 ### 4. Tool Integration (Capabilities)
 Nodes are authorized to use specific **Tools**.
@@ -60,7 +74,7 @@ Every node must return a `ClawOutput`, which dictates the flow of the entire Bag
 | **`signal`** | `Signal` | `DONE`, `FAILED`, `NEED_INFO`, `WORKING`, `HOLD_FOR_HUMAN`. |
 | **`summary`** | `str` | Plain-text explanation for the Architect/HUD. |
 | **`result_uri`** | `str` | (Optional) Pointer to Tier 3 results (S3, local path, etc). |
-| **`error_detail`** | `dict` | (Optional) Structured data for troubleshooting. |
+| **`error_detail`** | `dict` | **Mandatory on `FAILED`**. Must include a `failure_class` (e.g., `LOGIC_ERROR`, `TOOL_FAILURE`). See [FRS §2.2.1](file:///Users/aaronrodrigues/projects/clawgraph/notes/03_FRS.md) for enum. |
 | **`next_steps_hint`** | `list[str]` | **Recommendations for the SO**. Does NOT directly trigger other nodes. |
 
 > [!TIP]

@@ -66,6 +66,7 @@ The "Bag" is a set of **Agent Nodes**. Each node is a discrete unit of execution
 - **Agent Persona**: Defined by `description` and `skills.md`.
 - **Hardware/Model Specs**: Specific `provider` and `model` preferences.
 - **Sandboxed Tools**: A list of authorized capabilities (CLI, API).
+- **Prerequisites**: Optional `requires` list of artifact/document identifiers.
 
 ## 3. The "Bag of Nodes" Design
 The "Bag" is a dynamic registry of `ClawNode` and `ClawSubgraph` objects. Unlike traditional LangGraph implementations, these nodes are not statically linked by edges at compile time. Instead, they are **individually addressable**.
@@ -75,6 +76,7 @@ The "Bag" is a dynamic registry of `ClawNode` and `ClawSubgraph` objects. Unlike
     1. **Schema Enforcement**: Ensures output contains `signal` and `summary`.
     2. **Instrumentation**: Emits life-cycle events (`RUNNING`, `DONE`) to the `SignalManager`.
     3. **Pointer Wrapping**: Automatically wraps raw node outputs into `uri` pointers to keep the global state minimal.
+    4. **Dependency Declaration**: Reads the `requires` prerequisites to enable static scheduling checks.
 - **ClawBag**: A container that manages node registration, the "Bag Contract" (Input/Output schemas), and re-compilation.
 - **Signal Manager**: An independent, **transient** telemetry module. It tracks "what is happening right now." 
     - *State Tension Resolution*: On crash/resume, the Signal Manager state is reset (nodes marked as `STALE`). The Orchestrator relies on the **Session DB** and LangGraph Checkpointer for history, using the Signal Manager only for the live HUD and current turn context.
@@ -103,8 +105,14 @@ sequenceDiagram
     SO->>OR: start_job(goal, docs, max_iterations)
     loop Workflow
         OR->>OR: Analyze goal vs Manifest
-        OR->>NODE: Execute(node_id, context)
-        NODE->>SM: emit: RUNNING
+        OR->>OR: Check Prerequisite Resolve (B-REQ-14)
+        alt Prerequisites Missing
+            OR->>SM: emit: STALLED (WAITING ON [NodeID])
+            OR->>OR: Re-prioritize Producer Node
+        else Prerequisites Met
+            OR->>NODE: Execute(node_id, context)
+            NODE->>SM: emit: RUNNING
+        end
         Note right of NODE: Internal Parallelism
         alt Signal == DONE
             OR->>OR: Continue to next node
@@ -139,7 +147,7 @@ ClawGraph uses a **Pointer-Based State** to maintain a 500k+ token context windo
 | `objective` | string | The high-level goal provided by the Super-Orchestrator. |
 | `bag_contract` | schema | Defined input/output constraints for this bag. |
 | `bag_manifest` | uri | Pointer to the current JSON-LD manifest (versioned). |
-| `document_archive` | map[id, uri] | Registry of document pointers with multi-domain visibility tags. |
+| `document_archive` | map[id, uri] | Registry of document pointers with multi-domain visibility tags. **Bags only see documents they own or that are explicitly shared via tagging.** |
 | `phase_history` | list[summary] | Sequential list of accomplishment summaries for grounding. |
 
 ---
@@ -209,14 +217,50 @@ The `SignalManager` provides a "Heads-Up Display" (HUD) for the system.
 - **Consumption**:
     - **UI**: Renders a node-based dashboard showing running/completed nodes and their summaries.
     - **Failure Drilldown**: Captures the `error_metadata` from FAILED signals for deep inspection in mission control.
-    - **Orchestrator**: Receives a status snapshot as ambient context at the start of each reasoning turn.
+    - **Orchestration Context**: Receives a status snapshot as ambient context at the start of each reasoning turn.
 
-### 10.1 Progressive Disclosure & 3-Tier Node Architecture
+### 10.1 Node Signals vs. Orchestrator Events
+ClawGraph distinguishes between the **Node Contract** and **Orchestrator Status**:
+1.  **Node Signals (`ClawOutput`)**: Emitted by nodes to the Orchestrator (`DONE`, `FAILED`, etc.). These drive the logical flow of the bag.
+2.  **Orchestrator Events**: Emitted by the Orchestrator directly to the Signal Manager to describe its own routing state (`STALLED`, `RUNNING`, `RESOLVING`). These are for observability only and do not impact node code.
+
+### 10.2 Prerequisite Re-evaluation (STALLED Resolution)
+The Orchestrator implements an automatic resolution path for `STALLED` nodes:
+1.  **Detection**: Before firing a node, the Orchestrator checks if all artifacts in the node's `requires` list exist in the `document_archive`. If any are missing, it emits `STALLED`.
+2.  **Triggers**: Whenever a node emits a `DONE` signal, the Orchestrator enters a `RESOLVING` state.
+3.  **Scan**: It scans the queue of `STALLED` nodes and re-checks their prerequisites.
+4.  **Activation**: Successfully resolved nodes are moved back to the `READY` queue for execution.
+
+### 10.3 Exception Interception (The Safety Wrap)
+To prevent "ghost hangs" where a node crashes without signaling, the Orchestrator wraps all execution calls:
+- **Synthesized Failure**: If a python exception occurs, the Orchestrator catches it and emits a `FAILED` signal to the Signal Manager.
+- **Schema**: These synthesized failures use the `SYSTEM_CRASH` failure class and include the full traceback in the error metadata.
+
+### 10.4 Signal Escalation Logic
+The Orchestrator manages the transition from tactical blocks to architect-level interventions:
+- **NEED_INFO TTL**: Nodes in `NEED_INFO` have a configurable Time-To-Live. Upon expiration, the Orchestrator re-emits the status as `NEED_INTERVENTION`.
+- **Retry Budgets**: The Orchestrator tracks retry counts for specific failure classes. If a budget is exhausted, it escalates to `NEED_INTERVENTION`.
+
+### 10.5 Progressive Disclosure & 3-Tier Node Architecture
 To maintain efficiency, ClawGraph implements a **3-Tier** disclosure model for node data:
 
 1.  **Tier 1: Metadata (Manifest)**: Name, tags, and a **Super-Orchestrator-written description**. This is always resident in the Orchestrator's context. The Orchestrator operates *only* at Tier 1.
 2.  **Tier 2: Instructions (Internal)**: The node's specific instructions (prompts) and internal code. This is loaded **only** when requested by the Super-Orchestrator for auditing or editing.
 3.  **Tier 3: Resources (Archive)**: Raw tool outputs and artifacts stored as URI pointers. Retrieved on-demand via `audit_node()`.
+
+### 10.6 Signal Manager Duality (Live HUD vs. Durable History)
+To reconcile the need for high-speed monitoring and durable auditing, the Signal Manager performs two distinct roles:
+
+- **The Live Buffer**: Maintains an in-memory snapshot of **current** node statuses. This is transient and resets on crash/resumption.
+- **The Event Emitter**: As a side-effect of every signal transition, the Signal Manager emits a fire-and-forget `TimelineEvent` to the Session DB.
+
+### 10.7 The Split Read Path
+| API | Source | Consistency | Use Case |
+| :--- | :--- | :--- | :--- |
+| `get_hud_snapshot()` | **Signal Manager (RAM)** | Eventual (Transient) | Real-time visual monitoring. |
+| `get_timeline()` | **Session DB (Disk)** | Strict (Durable) | Post-mortem audit & compliance. |
+
+> This decoupling ensure that even if the Signal Manager crashes, the historical timeline remains intact in the DB.
 
 #### Audit Triggers
 Transitions from Tier 1 to Tier 3 are driven by two mechanisms:

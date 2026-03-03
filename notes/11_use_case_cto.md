@@ -72,7 +72,7 @@ def check_stability_alignment(coa_data: dict) -> ClawOutput:
     return ClawOutput(
         signal=NEED_INTERVENTION,
         summary="Manufacturing impurity (0.3) exceeds new FDA standard (0.1).",
-        error_detail="CMC section requires protocol update.",
+        error_detail={"issue": "CMC section requires protocol update."},
         result_uri="s3://cto-archive/stability/batch_99_fail.pdf"
     )
 ```

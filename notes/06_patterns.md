@@ -27,7 +27,7 @@ class ClawOutput(BaseModel):
                                         # This is what the Orchestrator sees. Keep it tight.
     result_uri: str | None = None       # Pointer to the artifact/document produced.
     human_request: str | None = None    # Required when signal == HOLD_FOR_HUMAN.
-    error_detail: str | None = None     # Required when signal == FAILED or NEED_INTERVENTION.
+    error_detail: dict | None = None     # Required when signal == FAILED or NEED_INTERVENTION.
     audit_hint: str | None = None       # Optional: Flag that this output warrants deep critique.
                                         # Future: triggers a CritiqueNode.
 ```
@@ -146,45 +146,43 @@ bag.resume_job(thread_id=state["thread_id"], human_response="approved")
 
 ---
 
-### 3.4 Subgraph with Aggregator Node (Parallel Fan-out)
+### 3.4 Subgraph with Aggregator Node (The Signal Bubble)
 
-When work can be parallelized, contain it inside a subgraph. The Orchestrator calls the subgraph as a single unit and receives one signal back. It never sees the individual inner nodes.
+When work is parallelized, it is contained within a **Signal Bubble**. The Orchestrator calls the subgraph as a single unit and receives **one** signal back. It is blind to the internal churn of inner nodes.
 
-```
-Subgraph: analyze_codebase
-├── Node A: scan_dependencies   ─┐
-├── Node B: scan_for_secrets    ─┤──► AggregatorNode ──► ClawOutput(DONE)
-└── Node C: lint_check          ─┘
-```
-
-- **Aggregator's Job**: Collects internal results and decides the final external signal.
-- **Error Detail Rule**: If a parallel branch fails, the Aggregator- **Identification**: `summary` identifies exactly which branch failed (e.g., `"Branch: Site-03 (India) failed CMC check"`).
-- **Escalation**: The failure signal is passed to the Orchestrator, which may then route to the Super-Orchestrator for repair.
-- **Why?** This allows the Super-Orchestrator to perform targeted repairs/re-runs without resetting the entire subgraph.
-- **Role Distinction**: The `summary` tells the **Orchestrator** what happened at a high level for routing; the `error_detail` tells the **Super-Orchestrator** exactly what to fix.
+- **Aggregator's Job**: Collects all internal results (even failures) and decides the final external signal.
+- **Error Aggregation**: If multiple parallel branches fail, the Aggregator must consolidate their `error_detail` objects into a single structured list.
+- **Why?** This prevents the Orchestrator from being overwhelmed by multiple failure paths, while providing the Super-Orchestrator with the full "failure map" needed for repair.
 
 ```python
-# The aggregator collects all branch results and emits a single summary
+# Aggregator logic: Consolidating parallel signals
 @ClawNode(name="aggregator", description="Merges parallel branch results.")
 def aggregator(state: SubgraphState) -> ClawOutput:
+    # 1. Collect results from all parallel branches
     results = [state["dep_result"], state["secrets_result"], state["lint_result"]]
-    combined_uri = store(results)
-    failed = [r for r in results if r["signal"] == "FAILED"]
+    
+    # 2. Extract failures
+    fail_metadata = {
+        r["node_id"]: r["error_detail"] 
+        for r in results if r["signal"] == Signal.FAILED
+    }
 
-    if failed:
-        # Identify exactly which branches failed for the Super-Orchestrator
-        failure_log = ", ".join([f"'{r['node_name']}'" for r in failed])
+    if fail_metadata:
         return ClawOutput(
             signal=Signal.FAILED,
-            summary=f"Parallel analysis partially failed: {len(failed)} of 3 branches failed.",
-            error_detail=f"The following branches failed: {failure_log}. Check result_uri for full trace.",
-            result_uri=combined_uri
+            summary=f"Analysis partially failed ({len(fail_metadata)} branches).",
+            # Structured map of exactly what failed where
+            error_detail={
+                "type": "AGGREGATE_FAILURE",
+                "failures": fail_metadata,
+                "context": "Parallel static analysis run"
+            }
         )
 
     return ClawOutput(
         signal=Signal.DONE,
-        summary="Codebase analysis complete. No secrets found. 3 lint warnings. Dependencies clean.",
-        result_uri=combined_uri
+        summary="Parallel checks passed successfully.",
+        result_uri=store(results)
     )
 ```
 
@@ -211,7 +209,10 @@ def verify_python_output(state: BagState) -> ClawOutput:
         return ClawOutput(
             signal=Signal.FAILED,
             summary=f"Verification failed. {test_results.failure_count} tests failed.",
-            error_detail=test_results.failure_log,
+            error_detail={
+                "failure_count": test_results.failure_count,
+                "log": test_results.failure_log
+            },
             result_uri=store(test_results)
         )
 
@@ -281,6 +282,18 @@ DONE              → Continue planning. Read summary. Update phase_history.
 FAILED            → Read error_detail. Decide: fix the node, fix the input, or abort.
 NEED_INFO         → Answer the clarification. Inject into state. Resume.
 HOLD_FOR_HUMAN    → Thread suspends. Wait for `resume_job()` via external handler.
+STALLED           → Analyze the "WAITING ON" hint. If the SO already possesses the 
+                    data or can resolve the block via bag CRUD, it should "poke" the 
+                    Orchestrator by injecting the missing resource or forcing a re-plan.
+
+### 4.3 Stalemate Resolution (Deadlock Breaking)
+If a node remains `STALLED` after its producer has completed (or if no producer exists), the Super-Orchestrator must intervene:
+1.  **Identify the Gap**: Call `audit_node(stalled_id)` to see exactly what artifact is missing from the `requires` list.
+2.  **Locate the Resource**: Search the `document_archive` (or external tools) for the missing URI.
+3.  **Repair/Inject**: 
+    - If the product exists under a different ID, update the stalled node's metadata.
+    - If the product is missing, `register_node` for a new producer or manually inject the artifact URI.
+4.  **Signal Resume**: The Orchestrator will automatically re-evaluate upon the next bag operation or a manual `poke` (empty update).
 NEED_INTERVENTION → Treat as a bag-level problem. Call get_inventory(). 
                     Inspect state schema. Repair before resuming.
 ```
@@ -426,6 +439,50 @@ The `links` array in the snapshot contains two distinct types of relationships:
 
 ---
 
+## Part 8: The Document Manager & Precision Editor
+
+In high-stakes workflows, agents frequently interact with large, persistent documents. The **Document Manager** pattern defines how agents perform CRUD operations on the `document_archive` while maintaining state precision and token efficiency.
+
+### 8.1 Precision Updates (Line-Level Edits)
+
+To avoid "Context Wash" (where a full rewrite accidentally omits or changes critical details), agents should perform **Precision Updates**. Instead of returning a full document, the agent returns a set of targeted edits.
+
+**Pattern Rules:**
+- **Never Rewrite by Default**: Full rewrites are reserved for the initial `CREATE` phase or a deliberate `REWRITE` signal.
+- **Atomic Diffs**: Agents generate specific line-level or section-level changes (e.g., "Replace lines 120-145 with [New Content]").
+- **State Concatenation**: The `DocumentArchive` manager (or a specialized node) applies these patches to the persistent artifact, keeping the history clear.
+
+### 8.2 Specialized Editor Skills (Base Class Pattern)
+
+Document handling logic can be complex. Rather than duplicating logic, use **Skill Inheritance**.
+
+1.  **Base Skill (`base_editor.md`)**: Defines the core CRUD tools and precision-editing instructions (e.g., "How to generate a diff").
+2.  **Specialized Skill (`reg_specialist.md`)**: Inherits the base editor logic and adds domain-specific constraints (e.g., "Ensure all edits comply with FDA 21 CFR Part 11").
+
+**Example Node Decoration:**
+```python
+@clawnode(
+    id="clinical_reg_editor",
+    description="Precision editor for Clinical Regulatory documents.",
+    # The agent inherits core editing intelligence + domain expertise
+    skills=["base_editor.md", "clinical_reg_standards.md"],
+    tools=["document_patcher", "regulatory_search"]
+)
+def edit_protocol(inputs: dict) -> ClawOutput:
+    ...
+```
+
+### 8.3 Document Lifecycle Metrics
+
+| Phase | Agent Action | Summary Goal |
+| :--- | :--- | :--- |
+| **CREATE** | Draft initial document. | "Created v1 of IB Justification." |
+| **READ** | Scan for specific data. | "Found stability mismatch in Section 4.2." |
+| **UPDATE** | Apply precision patches. | "Updated impurities table in Section 3 (Lines 45-60)." |
+| **REWRITE** | Re-structure entire doc. | "Complete restructuring of CCDS for global alignment." |
+
+---
+
 ## Appendix: Signal Quick Reference
 
 ```
@@ -433,5 +490,6 @@ DONE               ✅  Work complete. result_uri has the artifact.
 FAILED             ❌  Unrecoverable failure. error_detail is required.
 NEED_INFO          ❓  Needs upstream clarification. Super-Orchestrator answers.
 HOLD_FOR_HUMAN     🧑  Human decision required. Orchestrator bypasses SO. Thread suspends.
+STALLED            ⏳  Waiting on dependency resolution (Orchestrator-led).
 NEED_INTERVENTION  🚨  Bag/state is broken. Super-Orchestrator repairs before resuming.
 ```

@@ -43,7 +43,14 @@ ClawGraph is designed around a "blank slate" user story:
 
 ### 4.5 Orchestration Intelligence (HUD-Driven)
 - **B-REQ-12 (Structured Failure Metadata)**: Nodes signaling `FAILED` must provide a structured analysis object (e.g., expected thresholds vs. actual outcomes) to allow the Super-Orchestrator to perform automated root-cause analysis.
-- **B-REQ-13 (Multi-Domain Document Tagging)**: The Document Archive must support multi-bag tagging to allow artifacts to be visible across sovereign workspaces while maintaining a strict "owner" domain.
+- **B-REQ-13 (Multi-Domain Document Tagging)**: The Document Archive must support multi-bag tagging to allow artifacts to be visible across sovereign workspaces while maintaining a strict "owner" domain and preventing unauthorized cross-talk.
+- **B-REQ-14 (Sovereign Dependency Resolution)**: The Orchestrator shall be responsible for resolving input prerequisites across bags. If a node declares a required artifact (prerequisite) that is not yet present in the Document Archive, the Orchestrator shall mark the node as `STALLED` at scheduling time and prioritize the activation of the producer node.
+- **B-REQ-15 (Super-Orchestrator Stalemate Intervention)**: The Super-Orchestrator (Architect) shall monitor STALLED states. If the SO identifies that a block is solvable via a hidden dependency (manual injection or bag repair), it must have the capability to "prime" the state or force activation to resolve the stalemate.
+
+### 4.6 Temporal Transparency & Accountability
+- **B-REQ-16 (Timeline as First-Class Artifact)**: The system must maintain a durable, chronological event log of all lifecycle transitions. This serves as the "System of Record" for post-mortem analysis, billing transparency, and compliance auditing.
+- **B-REQ-17 (Accountability UX)**: The visualization layer must support "Temporal Navigation" (replay/seek) to build user trust by allowing operators to inspect exactly how a conclusion was reached over time.
+- **B-REQ-18 (Contextual Intervention)**: Human-in-the-loop requests must be surfaced with their preceding execution context (the "lead-up" events) to ensure reviewers have sufficient grounding for their decisions.
 
 ## 5. Success Metrics & Traceability
 - **Token Efficiency**: 30%+ reduction in average tokens per successful multi-step task compared to uncoordinated autonomous sessions.
