@@ -8,11 +8,6 @@ This high-fidelity example demonstrates **ClawGraph** applied to highly regulate
 
 ![Director's HUD Preview](assets/hud_preview.png)
 
-### Sequential Execution Path (Minimalist View)
-For simpler tracking, the **Timeline HUD** provides a linear view of the clinical chain of command.
-
-![Timeline Preview](assets/timeline_preview.png)
-
 The architecture is centered around a **Super-Orchestrator (SO)**—the Clinical Director agent—which maintains global state and mediates all cross-domain communication. Domain expertise is compartmentalized into **Sovereign Domains**, each containing a suite of specialized Task Nodes.
 
 ```mermaid
@@ -120,7 +115,7 @@ CMC teams must monitor stability data against shifting global thresholds (e.g., 
 
 ## 🛠️ Implementation Reference
 
-*   **[hud_mockup.html](hud_mockup.html)**: A sample HTML visualization of the Clinical Director's HUD.
+*   **[timeline_hud.html](timeline_hud.html)**: The high-fidelity, interactive Command Center visualization.
 *   **[nodes.py](nodes.py)**: The code-level implementation of the 22+ nodes.
 *   **[skills/](skills/)**: The library of expert markdown-based instructions for each specialist.
 *   **[tools/](tools/)**: Python-based mock implementations of capability APIs (PDF Parsing, Stats Calculation, etc.).

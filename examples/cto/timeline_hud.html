@@ -4,167 +4,509 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClawGraph | Multi-Domain Timeline HUD</title>
+    <title>ClawGraph | Command Center HUD</title>
     <style>
         :root {
-            --bg-color: #0d1117;
-            --line-color: #30363d;
-            --text-main: #c9d1d9;
+            --bg-darker: #010409;
+            --bg-main: #0d1117;
+            --sidebar-bg: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
             --text-dim: #8b949e;
-            --state-done: #3fb950;
-            --state-working: #d29922;
-            --state-failed: #f85149;
-            --state-pending: #21262d;
-            --accent-blue: #58a6ff;
+            --accent: #58a6ff;
+            --success: #3fb950;
+            --warning: #d29922;
+            --danger: #f85149;
+            --purple: #bc8cff;
+            --orange: #ffa657;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: 40px;
+            background-color: var(--bg-darker);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
             margin: 0;
             display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Layout Structure */
+        .sidebar-left,
+        .sidebar-right {
+            width: 300px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
             flex-direction: column;
-            gap: 50px;
-            min-height: 100vh;
+            z-index: 10;
         }
 
-        .header {
-            border-bottom: 2px solid var(--line-color);
-            padding-bottom: 20px;
+        .sidebar-right {
+            width: 380px;
+            border-right: none;
+            border-left: 1px solid var(--border);
         }
 
-        .header h1 {
-            font-size: 1.4rem;
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-main);
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* Headers */
+        .panel-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .panel-header h2 {
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             margin: 0;
             color: #fff;
         }
 
-        .header p {
+        /* --- LEFT: DOCUMENTS --- */
+        .doc-list {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .doc-item {
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .doc-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--border);
+        }
+
+        .doc-name {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .doc-meta {
+            font-size: 0.7rem;
             color: var(--text-dim);
-            font-size: 0.95rem;
-            margin-top: 8px;
-        }
-
-        .timeline-grid {
             display: flex;
-            flex-direction: column;
-            gap: 80px;
+            gap: 8px;
         }
 
-        .track {
-            display: grid;
-            grid-template-columns: 180px 1fr;
-            align-items: center;
-            gap: 40px;
-            position: relative;
+        /* Themed Tags for Documents */
+        .doc-tag {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.05);
         }
 
-        .track-label {
-            font-size: 0.8rem;
-            font-weight: 800;
-            color: var(--accent-blue);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-right: 1px solid var(--line-color);
-            padding-right: 20px;
-            height: 100%;
-            display: flex;
-            align-items: center;
+        .tag-blue {
+            color: var(--accent);
+            background: rgba(88, 166, 255, 0.1);
         }
 
-        .nodes-container {
-            display: flex;
-            align-items: center;
-            gap: 120px;
-            position: relative;
+        .tag-orange {
+            color: var(--orange);
+            background: rgba(255, 166, 87, 0.1);
         }
 
-        /* Horizontal connections */
-        .nodes-container::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: var(--line-color);
-            z-index: 1;
+        .tag-green {
+            color: var(--success);
+            background: rgba(63, 185, 80, 0.1);
         }
 
-        .node {
-            position: relative;
-            z-index: 2;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 20px;
-            /* Anchored width for circle */
+        .tag-purple {
+            color: var(--purple);
+            background: rgba(188, 140, 255, 0.1);
         }
 
-        .circle {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: var(--state-pending);
-            border: 2px solid var(--line-color);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .circle.done {
-            background: var(--state-done);
-            border-color: var(--state-done);
-            box-shadow: 0 0 10px rgba(63, 185, 80, 0.3);
-        }
-
-        .circle.working {
-            background: var(--state-working);
-            border-color: var(--state-working);
-            animation: pulse 1.5s infinite;
-        }
-
-        .node-label {
-            position: absolute;
-            top: 25px;
-            font-size: 0.72rem;
-            white-space: nowrap;
-            color: var(--text-dim);
+        .upload-btn {
+            padding: 12px;
+            border-top: 1px solid var(--border);
             text-align: center;
         }
 
-        /* Parallel Cluster (Fan-out/Fan-in) */
-        .parallel-cluster {
+        button.primary {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        /* --- CENTER: WORKERS --- */
+        .worker-container {
+            padding: 24px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .worker-card {
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 15px;
+            position: relative;
+        }
+
+        /* Color Coding Themes */
+        .theme-blue {
+            border-left: 4px solid var(--accent);
+        }
+
+        .theme-orange {
+            border-left: 4px solid var(--orange);
+        }
+
+        .theme-green {
+            border-left: 4px solid var(--success);
+        }
+
+        .theme-purple {
+            border-left: 4px solid var(--purple);
+        }
+
+        .worker-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .worker-title h3 {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .theme-blue h3 {
+            color: var(--accent);
+        }
+
+        .theme-orange h3 {
+            color: var(--orange);
+        }
+
+        .theme-green h3 {
+            color: var(--success);
+        }
+
+        .theme-purple h3 {
+            color: var(--purple);
+        }
+
+        .worker-status {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(50, 54, 61, 0.5);
+            font-weight: bold;
+        }
+
+        .activity-block {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .activity-label {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .activity-content {
+            color: var(--text);
+            font-weight: bold;
+        }
+
+        .steps {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+        }
+
+        /* Connecting Lines (Vertical Tracker) */
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 3.5px;
+            bottom: 4px;
+            width: 1px;
+            background: var(--border);
+            z-index: 1;
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.75rem;
+            color: var(--text-dim);
             position: relative;
             z-index: 2;
         }
 
-        .parallel-cluster::before,
-        .parallel-cluster::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: calc(100% - 4px);
-            border-top: 1px solid var(--line-color);
-            border-bottom: 1px solid var(--line-color);
-            top: 2px;
+        .step i {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--bg-darker);
+            border: 2px solid var(--border);
+            flex-shrink: 0;
+            margin-top: 4px;
         }
 
-        .parallel-cluster::before {
-            left: -20px;
-            border-left: 1px solid var(--line-color);
-            border-radius: 4px 0 0 4px;
+        .step.done i {
+            background: var(--success);
+            border-color: var(--success);
+            box-shadow: 0 0 5px var(--success);
         }
 
-        .parallel-cluster::after {
-            right: -20px;
-            border-right: 1px solid var(--line-color);
-            border-radius: 0 4px 4px 0;
+        .step.active i {
+            background: var(--warning);
+            border-color: var(--warning);
+            animation: pulse 1.5s infinite;
+        }
+
+        .step.failed i {
+            background: var(--danger);
+            border-color: var(--danger);
+            box-shadow: 0 0 5px var(--danger);
+        }
+
+        .step.done {
+            color: var(--text);
+            opacity: 0.7;
+        }
+
+        .step.active {
+            color: #fff;
+            opacity: 1;
+            font-weight: bold;
+        }
+
+        /* Dropdown/Summary styles */
+        details {
+            width: 100%;
+        }
+
+        summary {
+            cursor: pointer;
+            outline: none;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        summary::after {
+            content: '▼';
+            font-size: 0.5rem;
+            opacity: 0.5;
+            transition: transform 0.2s;
+        }
+
+        details[open] summary::after {
+            transform: rotate(180deg);
+        }
+
+        .summary-content {
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+            font-size: 0.7rem;
+            line-height: 1.4;
+            color: var(--text-dim);
+            border-left: 2px solid var(--border);
+        }
+
+        .upcoming-list {
+            padding-left: 10px;
+            margin-top: 5px;
+            border-left: 1px dashed var(--border);
+        }
+
+        .upcoming-item {
+            margin-bottom: 4px;
+            font-size: 0.65rem;
+        }
+
+        /* Dependency styles */
+        .dependency-badge {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(255, 166, 87, 0.05);
+            border: 1px dashed var(--orange);
+            border-radius: 4px;
+            font-size: 0.7rem;
+        }
+
+        .dep-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            color: var(--orange);
+            font-weight: bold;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .dep-ref {
+            font-weight: bold;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .dep-ref.blue {
+            color: var(--accent);
+        }
+
+        .dep-ref.orange {
+            color: var(--orange);
+        }
+
+        .dep-ref.green {
+            color: var(--success);
+        }
+
+        .dep-ref.purple {
+            color: var(--purple);
+        }
+
+        .summary-content.failure {
+            background: rgba(248, 81, 73, 0.05);
+            border-left: 2px solid var(--danger);
+            color: var(--text-dim);
+        }
+
+        /* --- RIGHT: CHAT --- */
+        .chat-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            overflow-y: auto;
+            gap: 16px;
+        }
+
+        .msg {
+            max-width: 85%;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .msg.system {
+            background: transparent;
+            border: 1px solid var(--border);
+            align-self: flex-start;
+        }
+
+        .msg.orchestrator {
+            background: rgba(88, 166, 255, 0.05);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            align-self: flex-start;
+        }
+
+        .msg.user {
+            background: var(--accent);
+            color: #fff;
+            align-self: flex-end;
+        }
+
+        .msg-sender {
+            font-size: 0.65rem;
+            font-weight: bold;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .msg-sender.orch {
+            color: var(--accent);
+        }
+
+        .chat-input-area {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .chat-input-area input {
+            width: 100%;
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 14px;
+            color: #fff;
+            outline: none;
+        }
+
+        /* Global UI elements */
+        .toggle-group {
+            display: flex;
+            background: #000;
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .toggle-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            padding: 4px 10px;
+            font-size: 0.65rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .toggle-btn.active {
+            background: var(--border);
+            color: #fff;
         }
 
         @keyframes pulse {
@@ -174,7 +516,7 @@
             }
 
             50% {
-                transform: scale(1.2);
+                transform: scale(1.3);
                 opacity: 1;
             }
 
@@ -183,193 +525,251 @@
                 opacity: 0.8;
             }
         }
-
-        .legend {
-            margin-top: auto;
-            display: flex;
-            gap: 30px;
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            padding-top: 30px;
-            border-top: 1px solid var(--line-color);
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
-
-        .dot.done {
-            background: var(--state-done);
-        }
-
-        .dot.working {
-            background: var(--state-working);
-        }
-
-        .dot.pending {
-            background: var(--state-pending);
-            border: 1px solid var(--line-color);
-        }
     </style>
 </head>
 
 <body>
 
-    <div class="header">
-        <h1>ClawGraph | Sovereign Domain Execution Tracks</h1>
-        <p>A multi-track visualization of sequential and parallel task orchestration across all domains.</p>
+    <!-- LEFT: DOCUMENT MANAGER -->
+    <div class="sidebar-left">
+        <div class="panel-header">
+            <h2>DOCUMENTS</h2>
+            <div class="toggle-group">
+                <button class="toggle-btn active">ALL</button>
+                <button class="toggle-btn">UNASSIGNED</button>
+            </div>
+        </div>
+        <div class="doc-list">
+            <div class="doc-item">
+                <span class="doc-name">clinical_protocol_v2.pdf</span>
+                <div class="doc-meta">
+                    <span class="doc-tag tag-green">Reg_Ops</span>
+                    <span>12.4 MB</span>
+                </div>
+            </div>
+            <div class="doc-item">
+                <span class="doc-name">patient_consent_forms.zip</span>
+                <div class="doc-meta">
+                    <span class="doc-tag tag-blue">Clin_Ops</span>
+                    <span>45.1 MB</span>
+                </div>
+            </div>
+            <div class="doc-item">
+                <span class="doc-name">lab_results_march.xlsx</span>
+                <div class="doc-meta">
+                    <span class="doc-tag tag-blue">Clin_Ops</span>
+                    <span>2.3 MB</span>
+                </div>
+            </div>
+            <div class="doc-item">
+                <span class="doc-name">safety_audit_report.md</span>
+                <div class="doc-meta">
+                    <span class="doc-tag tag-orange">Strategy</span>
+                    <span>45 KB</span>
+                </div>
+            </div>
+        </div>
+        <div class="upload-btn">
+            <button class="primary">+ Upload Knowledge</button>
+        </div>
     </div>
 
-    <div class="timeline-grid">
+    <!-- CENTER: ORCHESTRATION HUB -->
+    <main>
+        <div class="panel-header" style="background: var(--bg-darker)">
+            <h2>WORKER ORCHESTRATION</h2>
+            <div class="stat-box" style="font-size: 0.7rem; color: var(--text-dim)">
+                SYSTEM STATUS: <span style="color: var(--success); font-weight: bold">OPERATIONAL</span>
+            </div>
+        </div>
 
-        <!-- Track 1: Clinical Operations (Parallelism Demo) -->
-        <div class="track">
-            <div class="track-label">Clinical Ops</div>
-            <div class="nodes-container">
-                <div class="node">
-                    <div class="circle done"></div>
-                    <div class="node-label">Onboarding</div>
+        <div class="worker-container">
+            <!-- 1. Clinical Ops -->
+            <div class="worker-card theme-blue">
+                <div class="worker-title">
+                    <h3>Clinical Ops</h3>
+                    <span class="worker-status" style="color: var(--warning)">RUNNING</span>
                 </div>
+                <div class="activity-block">
+                    <span class="activity-label">Active Agent</span>
+                    <div class="activity-content">Patient Tracking Sync</div>
+                </div>
+                <ul class="steps">
+                    <li class="step done">
+                        <i></i>
+                        <details>
+                            <summary>Data Intake Complete</summary>
+                            <div class="summary-content">
+                                Processed 45 patient files. Validation against schema-v4 matched 100%. Metadata indexed
+                                to primary bag.
+                            </div>
+                        </details>
+                    </li>
+                    <li class="step active"><i></i> Syncing v1.2 Documents</li>
+                    <li class="step"><i></i> Validation Signature</li>
+                    <li class="step">
+                        <i></i>
+                        <details>
+                            <summary>...</summary>
+                            <div class="upcoming-list">
+                                <div class="upcoming-item">• Cross-domain Handover</div>
+                                <div class="upcoming-item">• Resource Deallocation</div>
+                            </div>
+                        </details>
+                    </li>
+                </ul>
+            </div>
 
-                <div class="parallel-cluster">
-                    <div class="node">
-                        <div class="circle done"></div>
-                        <div class="node-label">Lab Vetting</div>
+            <!-- 2. CMC Regulatory -->
+            <div class="worker-card theme-orange">
+                <div class="worker-title">
+                    <h3>CMC Regulatory</h3>
+                    <span class="worker-status" style="color: var(--danger)">FAILED</span>
+                </div>
+                <div class="activity-block">
+                    <span class="activity-label">Active Agent</span>
+                    <div class="activity-content">Stability Master</div>
+                </div>
+                <ul class="steps">
+                    <li class="step done">
+                        <i></i>
+                        <details>
+                            <summary>Stability Init</summary>
+                            <div class="summary-content">
+                                Environment seeds established. Baseline drift set at 0.012%. All sensors reporting
+                                healthy logs.
+                            </div>
+                        </details>
+                    </li>
+                    <li class="step failed">
+                        <i></i>
+                        <details>
+                            <summary>Mismatch in Impurity Drift</summary>
+                            <div class="summary-content failure">
+                                <strong>Error Code: CMC-402</strong><br>
+                                Detected 0.045% variance in Batch Alpha-9. Threshold exceeded (limit 0.020%).
+                                Automated recalibration failed. Requires manual sign-off.
+                            </div>
+                        </details>
+                    </li>
+                    <li class="step"><i></i> Validation Queue</li>
+                    <li class="step">
+                        <i></i>
+                        <details>
+                            <summary>...</summary>
+                            <div class="upcoming-list">
+                                <div class="upcoming-item">• Drift Recalibration</div>
+                            </div>
+                        </details>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 3. Reg Ops -->
+            <div class="worker-card theme-green">
+                <div class="worker-title">
+                    <h3>Regulatory Ops</h3>
+                    <span class="worker-status" style="color: var(--success)">IDLE</span>
+                </div>
+                <div class="activity-block">
+                    <span class="activity-label">Last Agent</span>
+                    <div class="activity-content">eCTD Publisher</div>
+                </div>
+                <ul class="steps">
+                    <li class="step done">
+                        <i></i>
+                        <details>
+                            <summary>Formatting Gate</summary>
+                            <div class="summary-content">
+                                Document layout checked for v4.2 standards. All margins and font embeds verified.
+                            </div>
+                        </details>
+                    </li>
+                    <li class="step done">
+                        <i></i>
+                        <details>
+                            <summary>Publishing Complete</summary>
+                            <div class="summary-content">
+                                eCTD package generated. SHA-256 hash: 0x4f12... Ready for filing gate.
+                            </div>
+                        </details>
+                    </li>
+                    <li class="step"><i></i> Launch Prep</li>
+                    <li class="step">
+                        <i></i>
+                        <details>
+                            <summary>...</summary>
+                            <div class="upcoming-list">
+                                <div class="upcoming-item">• Global Coord Handover</div>
+                            </div>
+                        </details>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 4. Clinical Reg -->
+            <div class="worker-card theme-purple">
+                <div class="worker-title">
+                    <h3>Clinical Reg</h3>
+                    <span class="worker-status" style="color: var(--orange)">STALLED</span>
+                </div>
+                <div class="activity-block">
+                    <span class="activity-label">Target Agent</span>
+                    <div class="activity-content">IND Submission Mgr</div>
+                    <div class="dependency-badge">
+                        <span class="dep-label">WAITING ON</span>
+                        <span class="dep-ref blue">Clinical Ops</span>: Patient data sync required for Module 5
+                        consolidation.
                     </div>
-                    <div class="node">
-                        <div class="circle working"></div>
-                        <div class="node-label">Integrity Check</div>
-                    </div>
-                    <div class="node">
-                        <div class="circle done"></div>
-                        <div class="node-label">Narration</div>
-                    </div>
                 </div>
-
-                <div class="node">
-                    <div class="circle"></div>
-                    <div class="node-label">Daily Sync</div>
-                </div>
+                <ul class="steps">
+                    <li class="step"><i></i> Protocol Review</li>
+                    <li class="step">
+                        <i></i>
+                        <details>
+                            <summary>...</summary>
+                            <div class="upcoming-list">
+                                <div class="upcoming-item">• Gathering Signatures</div>
+                                <div class="upcoming-item">• Filing Gate</div>
+                            </div>
+                        </details>
+                    </li>
+                </ul>
             </div>
         </div>
+    </main>
 
-        <!-- Track 2: CMC Regulatory -->
-        <div class="track">
-            <div class="track-label">CMC Regulatory</div>
-            <div class="nodes-container">
-                <div class="node">
-                    <div class="circle done"></div>
-                    <div class="node-label">Stability Init</div>
-                </div>
-                <div class="node">
-                    <div class="circle working"></div>
-                    <div class="node-label">Trend Analysis</div>
-                </div>
-                <div class="node">
-                    <div class="circle"></div>
-                    <div class="node-label">Tech Docs</div>
-                </div>
-                <div class="node">
-                    <div class="circle"></div>
-                    <div class="node-label">Validation</div>
-                </div>
+    <!-- RIGHT: ORCHESTRATOR CHAT -->
+    <div class="sidebar-right">
+        <div class="panel-header">
+            <h2>ORCHESTRATOR</h2>
+            <div class="toggle-group">
+                <button class="toggle-btn active">SUPER</button>
+                <button class="toggle-btn">SUB</button>
             </div>
         </div>
-
-        <!-- Track 3: Clinical Regulatory -->
-        <div class="track">
-            <div class="track-label">Clinical Reg</div>
-            <div class="nodes-container">
-                <div class="node">
-                    <div class="circle done"></div>
-                    <div class="node-label">Protocol Dev</div>
-                </div>
-                <div class="node">
-                    <div class="circle done"></div>
-                    <div class="node-label">IND Submission</div>
-                </div>
-                <div class="node">
-                    <div class="circle"></div>
-                    <div class="node-label">Investigator Broc</div>
-                </div>
+        <div class="chat-view">
+            <div class="msg system">
+                <span class="msg-sender">SYSTEM [12:04]</span>
+                Kernel initialized. ClawGraph heartbeat detected.
+            </div>
+            <div class="msg orchestrator">
+                <span class="msg-sender orch">Claude Code [12:05]</span>
+                Ready to coordinate the Global Clinical Trial. I see the CMC_Stability issue - I've flagged it for your
+                intervention.
+            </div>
+            <div class="msg user">
+                <span class="msg-sender">USER [12:08]</span>
+                What documents is Clinical Ops using right now?
+            </div>
+            <div class="msg orchestrator">
+                <span class="msg-sender orch">Claude Code [12:08]</span>
+                They are currently syncing the `patient_consent_forms.zip` and cross-referencing with
+                `lab_results_march.xlsx`.
             </div>
         </div>
-
-        <!-- Track 4: Strategic & Labeling (Parallel Output) -->
-        <div class="track">
-            <div class="track-label">Strategy & Labeling</div>
-            <div class="nodes-container">
-                <div class="node">
-                    <div class="circle done"></div>
-                    <div class="node-label">CCDS Strategy</div>
-                </div>
-
-                <div class="parallel-cluster">
-                    <div class="node">
-                        <div class="circle working"></div>
-                        <div class="node-label">USPI Leaflets</div>
-                    </div>
-                    <div class="node">
-                        <div class="circle"></div>
-                        <div class="node-label">Risk Assessment</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Track 5: Regulatory Ops -->
-        <div class="track">
-            <div class="track-label">Reg Ops</div>
-            <div class="nodes-container">
-                <div class="node">
-                    <div class="circle done"></div>
-                    <div class="node-label">Global Coord</div>
-                </div>
-                <div class="node">
-                    <div class="circle"></div>
-                    <div class="node-label">eCTD Gate</div>
-                </div>
-                <div class="node">
-                    <div class="circle"></div>
-                    <div class="node-label">Formatting</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Track 6: Global Marketing -->
-        <div class="track">
-            <div class="track-label">Marketing</div>
-            <div class="nodes-container">
-                <div class="node">
-                    <div class="circle"></div>
-                    <div class="node-label">Press Release</div>
-                </div>
-                <div class="node">
-                    <div class="circle"></div>
-                    <div class="node-label">Strategic Launch</div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <div class="legend">
-        <div class="legend-item">
-            <div class="dot done"></div> COMPLETED
-        </div>
-        <div class="legend-item">
-            <div class="dot working"></div> ACTIVE
-        </div>
-        <div class="legend-item">
-            <div class="dot pending"></div> QUEUED
+        <div class="chat-input-area">
+            <input type="text" placeholder="Type a message...">
         </div>
     </div>
 

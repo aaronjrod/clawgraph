@@ -1,7 +1,8 @@
 # ClawGraph 👜
 ### Hierarchical Agent Orchestration for High-Stakes Workflows
+---
 
-**ClawGraph** is a framework built on [LangGraph](https://github.com/langchain-ai/langgraph) designed to handle the "Complexity Wall" in AI agent systems. It introduces a modular **Sovereign Workspace** model that separates high-level architectural planning from tactical execution.
+![ClawGraph Command Center HUD](examples/cto/assets/hud_preview.png)
 
 ---
 

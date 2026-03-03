@@ -41,6 +41,10 @@ ClawGraph is designed around a "blank slate" user story:
 - **B-REQ-7**: Provide a real-time visualization of the agent collective's status to build user trust and facilitate manual intervention.
 - **B-REQ-8**: Enable a "Lead-Teammate" interaction model where users (or lead agents) can provide feedback on artifacts (plans, diffs) asynchronously.
 
+### 4.5 Orchestration Intelligence (HUD-Driven)
+- **B-REQ-12 (Structured Failure Metadata)**: Nodes signaling `FAILED` must provide a structured analysis object (e.g., expected thresholds vs. actual outcomes) to allow the Super-Orchestrator to perform automated root-cause analysis.
+- **B-REQ-13 (Multi-Domain Document Tagging)**: The Document Archive must support multi-bag tagging to allow artifacts to be visible across sovereign workspaces while maintaining a strict "owner" domain.
+
 ## 5. Success Metrics & Traceability
 - **Token Efficiency**: 30%+ reduction in average tokens per successful multi-step task compared to uncoordinated autonomous sessions.
     - *Driven by*: Pointer-Based State, Integrated Summaries, and Selective Memory Pruning.

@@ -139,7 +139,7 @@ ClawGraph uses a **Pointer-Based State** to maintain a 500k+ token context windo
 | `objective` | string | The high-level goal provided by the Super-Orchestrator. |
 | `bag_contract` | schema | Defined input/output constraints for this bag. |
 | `bag_manifest` | uri | Pointer to the current JSON-LD manifest (versioned). |
-| `document_archive` | map[id, uri] | Registry of document pointers (results of node execution). |
+| `document_archive` | map[id, uri] | Registry of document pointers with multi-domain visibility tags. |
 | `phase_history` | list[summary] | Sequential list of accomplishment summaries for grounding. |
 
 ---
@@ -208,6 +208,7 @@ The `SignalManager` provides a "Heads-Up Display" (HUD) for the system.
 - **Independence**: Signal state is transient and lives outside the durable checkpointer.
 - **Consumption**:
     - **UI**: Renders a node-based dashboard showing running/completed nodes and their summaries.
+    - **Failure Drilldown**: Captures the `error_metadata` from FAILED signals for deep inspection in mission control.
     - **Orchestrator**: Receives a status snapshot as ambient context at the start of each reasoning turn.
 
 ### 10.1 Progressive Disclosure & 3-Tier Node Architecture
