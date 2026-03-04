@@ -17,6 +17,7 @@ from enum import Enum
 class Signal(str, Enum):
     DONE               = "DONE"
     FAILED             = "FAILED"
+    PARTIAL            = "PARTIAL"          # Phase complete with mixed results.
     NEED_INFO          = "NEED_INFO"
     HOLD_FOR_HUMAN     = "HOLD_FOR_HUMAN"
     NEED_INTERVENTION  = "NEED_INTERVENTION"
@@ -27,7 +28,8 @@ class ClawOutput(BaseModel):
                                         # This is what the Orchestrator sees. Keep it tight.
     result_uri: str | None = None       # Pointer to the artifact/document produced.
     human_request: str | None = None    # Required when signal == HOLD_FOR_HUMAN.
-    error_detail: dict | None = None     # Required when signal == FAILED or NEED_INTERVENTION.
+    error_detail: dict | None = None     # Required when signal == FAILED, PARTIAL, or NEED_INTERVENTION.
+                                        # MUST include failure_class if any branches failed or for terminal failure.
     audit_hint: str | None = None       # Optional: Flag that this output warrants deep critique.
                                         # Future: triggers a CritiqueNode.
 ```
@@ -51,6 +53,7 @@ Choosing the wrong signal is the most common source of Orchestrator confusion. U
 |---|---|---|
 | `DONE` | Task completed successfully. Result is in `result_uri`. | Orchestrator routes to next node. |
 | `FAILED` | Node tried, failed, cannot self-recover. Provide `error_detail`. | Orchestrator escalates to Super-Orchestrator. |
+| `PARTIAL` | Subgraph/Phase completed but with mixed results (e.g., 2/3 branches passed). Provide breakdown in `error_detail`. | Orchestrator decides whether to proceed or remediate. |
 | `NEED_INFO` | Node is missing information it needs from an upstream decision-maker. | Orchestrator surfaces to Super-Orchestrator for clarification, then resumes. |
 | `HOLD_FOR_HUMAN` | Node requires a specific human decision before proceeding (e.g., approve a shell command, review a diff). | Orchestrator **bypasses** Super-Orchestrator and surfaces `human_request` directly to the user. Thread suspends until human responds. |
 | `NEED_INTERVENTION` | State drift, schema mismatch, or unrecoverable orchestration error. The bag itself may be broken. | Orchestrator escalates to Super-Orchestrator for bag repair. |
@@ -88,7 +91,6 @@ The baseline pattern. One job, one output.
 
 ```python
 from clawgraph import ClawNode, ClawOutput, Signal
-
 @ClawNode(name="summarize_document", description="Reads a document URI and returns a summary.")
 def summarize_document(state: BagState) -> ClawOutput:
     doc = fetch(state["document_archive"]["target_doc"])
@@ -115,7 +117,6 @@ Use when a dangerous or irreversible action needs explicit approval.
 @ClawNode(name="execute_shell_command", description="Runs a shell command after human approval.")
 def execute_shell_command(state: BagState) -> ClawOutput:
     command = state["pending_command"]
-
     if not state.get("shell_approved"):
         return ClawOutput(
             signal=Signal.HOLD_FOR_HUMAN,
@@ -126,7 +127,6 @@ def execute_shell_command(state: BagState) -> ClawOutput:
                 f"Please approve or reject."
             )
         )
-
     result = subprocess.run(command, capture_output=True)
     uri = store(result.stdout)
     return ClawOutput(
@@ -148,48 +148,52 @@ bag.resume_job(thread_id=state["thread_id"], human_response="approved")
 
 ### 3.4 Subgraph with Aggregator Node (The Signal Bubble)
 
-When work is parallelized, it is contained within a **Signal Bubble**. The Orchestrator calls the subgraph as a single unit and receives **one** signal back. It is blind to the internal churn of inner nodes.
+When work is parallelized, it is contained within a **Signal Bubble**. The Orchestrator calls the subgraph as a single unit and receives **one** signal back. 
 
-- **Aggregator's Job**: Collects all internal results (even failures) and decides the final external signal.
-- **Error Aggregation**: If multiple parallel branches fail, the Aggregator must consolidate their `error_detail` objects into a single structured list.
-- **Why?** This prevents the Orchestrator from being overwhelmed by multiple failure paths, while providing the Super-Orchestrator with the full "failure map" needed for repair.
+- **Aggregator's Job**: Collects all internal results (from the Signal Manager or inner state) and decides the final external signal (`DONE`, `FAILED`, or `PARTIAL`).
+- **Partial Commit Policy**: Respects `eager` (commit branch results immediately) or `atomic` (defer all to bubble completion). Eager commits allow STALLED consumers to unblock mid-bubble.
+- **Abstraction Layer**: It produces a rolled-up summary for the Orchestrator, effectively hiding the internal noise while the system-level timeline/audit logs contain the full-fidelity branch data.
 
 ```python
-# Aggregator logic: Consolidating parallel signals
+# Aggregator logic: Consolidating parallel signals into a PARTIAL outcome
 @ClawNode(name="aggregator", description="Merges parallel branch results.")
 def aggregator(state: SubgraphState) -> ClawOutput:
     # 1. Collect results from all parallel branches
     results = [state["dep_result"], state["secrets_result"], state["lint_result"]]
     
-    # 2. Extract failures
-    fail_metadata = {
-        r["node_id"]: r["error_detail"] 
-        for r in results if r["signal"] == Signal.FAILED
-    }
-
-    if fail_metadata:
+    # 2. Extract failures and completions
+    failures = {r["node_id"]: r["error_detail"] for r in results if r["signal"] == Signal.FAILED}
+    done_count = len([r for r in results if r["signal"] == Signal.DONE])
+    
+    # 3. Decision Logic
+    if failures and done_count > 0:
         return ClawOutput(
-            signal=Signal.FAILED,
-            summary=f"Analysis partially failed ({len(fail_metadata)} branches).",
-            # Structured map of exactly what failed where
+            signal=Signal.PARTIAL,
+            summary=f"Phase completed with mixed results ({done_count}/{len(results)} passed).",
             error_detail={
-                "type": "AGGREGATE_FAILURE",
-                "failures": fail_metadata,
-                "context": "Parallel static analysis run"
+                "type": "AGGREGATE_PARTIAL",
+                "failures": failures,
+                "passed_count": done_count
             }
         )
-
+    elif failures:
+        return ClawOutput(
+            signal=Signal.FAILED,
+            summary="All branches failed.",
+            error_detail={"type": "AGGREGATE_FAILURE", "failures": failures}
+        )
+    
     return ClawOutput(
         signal=Signal.DONE,
-        summary="Parallel checks passed successfully.",
+        summary="All parallel checks passed successfully.",
         result_uri=store(results)
     )
 ```
 
 **Rules:**
-- The Orchestrator is notified once — when the subgraph (aggregator) completes.
-- Never surface inner node signals directly to the Orchestrator.
-- The aggregator is responsible for escalating failures upward with a coherent `error_detail`.
+- The Orchestrator receives the aggregated abstraction.
+- Use `PARTIAL` when some work was successful but remediation is needed for failures.
+- The full branch history is always available in the `get_timeline()` / `audit_node()` logic.
 
 ---
 
@@ -202,9 +206,7 @@ A test node is just a regular ClawNode. It reads an artifact URI, runs checks, a
 def verify_python_output(state: BagState) -> ClawOutput:
     module_uri = state["document_archive"]["generated_module"]
     module_code = fetch(module_uri)
-
     test_results = run_tests(module_code, state["test_suite"])
-
     if not test_results.passed:
         return ClawOutput(
             signal=Signal.FAILED,
@@ -215,7 +217,6 @@ def verify_python_output(state: BagState) -> ClawOutput:
             },
             result_uri=store(test_results)
         )
-
     return ClawOutput(
         signal=Signal.DONE,
         summary=f"All {test_results.total} tests passed.",
@@ -256,8 +257,17 @@ The Super-Orchestrator receives **summaries only** from the Orchestrator during 
 - **Do not ask the Orchestrator to replay raw outputs.** Call `audit_node(node_id)` instead.
 - **Trust summaries for routing decisions.** Only audit when a summary seems inconsistent or a node fails unexpectedly.
 - **Cold-start is the exception:** When building a bag from scratch, the Super-Orchestrator may need fuller context to design the initial node set. This is expected.
+ 
+### 4.3 Stalemate Resolution (Deadlock Breaking)
+If a node remains `STALLED` after its producer has completed (or if no producer exists), the Super-Orchestrator must intervene:
+1.  **Identify the Gap**: Call `audit_node(stalled_id)` to see exactly what artifact is missing from the `requires` list.
+2.  **Locate the Resource**: Search the `document_archive` (or external tools) for the missing URI.
+3.  **Repair/Inject**: 
+    - If the product exists under a different ID, update the stalled node's metadata.
+    - If the product is missing, `register_node` for a new producer or manually inject the artifact URI.
+4.  **Signal Resume**: The Orchestrator will automatically re-evaluate upon the next bag operation or a manual `poke` (empty update).
 
-### 4.3 Node Design Principles
+### 4.4 Node Design Principles
 
 When writing a new node, follow these rules:
 
@@ -273,68 +283,55 @@ When writing a new node, follow these rules:
 | **Orphaned Pointers** | Deleting a node or rolling back a bag **does not** delete its artifacts from the archive. Be aware that state may still reference URIs produced by "ghost" nodes. |
 | **Fail loudly** | On failure, always populate `error_detail`. A vague `FAILED` signal without detail forces unnecessary auditing. |
 
-### 4.4 When to Use Each Signal (Super-Orchestrator Decision Tree)
+### 4.5 When to Use Each Signal (Super-Orchestrator Decision Tree)
 
 When a node returns a signal, the Super-Orchestrator should respond as follows:
 
 ```
 DONE              → Continue planning. Read summary. Update phase_history.
 FAILED            → Read error_detail. Decide: fix the node, fix the input, or abort.
+PARTIAL           → Read breakdown. Remediate failed branches or proceed if blockers are non-critical.
 NEED_INFO         → Answer the clarification. Inject into state. Resume.
 HOLD_FOR_HUMAN    → Thread suspends. Wait for `resume_job()` via external handler.
 STALLED           → Analyze the "WAITING ON" hint. If the SO already possesses the 
                     data or can resolve the block via bag CRUD, it should "poke" the 
                     Orchestrator by injecting the missing resource or forcing a re-plan.
-
-### 4.3 Stalemate Resolution (Deadlock Breaking)
-If a node remains `STALLED` after its producer has completed (or if no producer exists), the Super-Orchestrator must intervene:
-1.  **Identify the Gap**: Call `audit_node(stalled_id)` to see exactly what artifact is missing from the `requires` list.
-2.  **Locate the Resource**: Search the `document_archive` (or external tools) for the missing URI.
-3.  **Repair/Inject**: 
-    - If the product exists under a different ID, update the stalled node's metadata.
-    - If the product is missing, `register_node` for a new producer or manually inject the artifact URI.
-4.  **Signal Resume**: The Orchestrator will automatically re-evaluate upon the next bag operation or a manual `poke` (empty update).
 NEED_INTERVENTION → Treat as a bag-level problem. Call get_inventory(). 
                     Inspect state schema. Repair before resuming.
 ```
 
-### 4.5 Registering a HITL Handler
+### 4.6 Registering a HITL Handler
 The Super-Orchestrator or Developer must register a delivery mechanism for `HOLD_FOR_HUMAN` signals.
 
 ```python
 def my_ui_handler(thread_id, human_request):
     # Send to Slack, WebSocket, or Email
     send_to_user_interface(thread_id, human_request)
-
 bag.register_hitl_handler(my_ui_handler)
 ```
 
-### 4.6 Cold-Start Sequence
+### 4.7 Cold-Start Sequence
 
 When starting a new project from scratch:
 
 ```python
 # Step 1: Initialize the bag with a contract
 bag = ClawBag(name="my_project", contract=MyBagContract)
-
 # Step 2: Call get_inventory() — even on a fresh bag — to confirm state
 inventory = bag.get_inventory()
-
 # Step 3: Register core nodes one at a time, verifying after each
 bag.register_node(node_code=..., metadata={...})
-
 # Step 4: Start a test job to verify initial wiring
 result = bag.start_job(
     objective="Smoke test: run all nodes against sample input.",
     inputs=sample_inputs,
     max_iterations=3
 )
-
 # Step 5: Inspect summaries. Audit any node that looks wrong.
 bag.audit_node("node_id_here")
 ```
 
-### 4.7 Bag Repair (`NEED_INTERVENTION`)
+### 4.8 Bag Repair (`NEED_INTERVENTION`)
 
 When the Orchestrator emits `NEED_INTERVENTION`:
 
@@ -488,6 +485,7 @@ def edit_protocol(inputs: dict) -> ClawOutput:
 ```
 DONE               ✅  Work complete. result_uri has the artifact.
 FAILED             ❌  Unrecoverable failure. error_detail is required.
+PARTIAL            📂  Phase complete with caveates. Breakdown in error_detail.
 NEED_INFO          ❓  Needs upstream clarification. Super-Orchestrator answers.
 HOLD_FOR_HUMAN     🧑  Human decision required. Orchestrator bypasses SO. Thread suspends.
 STALLED            ⏳  Waiting on dependency resolution (Orchestrator-led).

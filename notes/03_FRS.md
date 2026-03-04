@@ -16,67 +16,78 @@ ClawGraph is a Python library that wraps LangGraph to provide a signal-based, de
 - **F-REQ-6 (Node Output Signals)**: Each node shall emit one of the following signals to the Orchestrator via `ClawOutput`:
     - `DONE`: Task completed successfully.
     - `FAILED`: Task failed irrecoverably. **MUST** include a structured `error_detail` object.
+    - `PARTIAL`: Task completed with caveats (e.g., mixed results in parallel branches). **MUST** include a branch breakdown in `error_detail`.
     - `NEED_INFO`: Node is paused, waiting for clarification. **MUST** include an `info_request` payload specifying the `question`, `context`, and `target` (e.g., `SO`, `USER`, or `EITHER`).
     - `HOLD_FOR_HUMAN`: Node is gated on a specific human decision (e.g., approve shell execution or document diff).
     - `NEED_INTERVENTION`: State drift or unrecoverable orchestration error; escalates to Super-Orchestrator for repair.
 
 ### 2.2.1 Error Taxonomy (`error_detail`)
-- **F-REQ-12.1 (Failure Classification)**: Every `FAILED` signal shall include a `failure_class` from the following enum:
+- **F-REQ-7 (Failure Classification)**: Every `FAILED` or `PARTIAL` signal (that includes failed branches) shall include a `failure_class` from the following enum:
     - `LOGIC_ERROR`: Flaw in node implementation or reasoning.
     - `SCHEMA_MISMATCH`: Input/Output does not match the Bag Contract or Tool schema.
     - `TOOL_FAILURE`: External API or CLI tool returned an error or timed out.
     - `GUARDRAIL_VIOLATION`: Security policy blocked a requested action.
     - `SYSTEM_CRASH`: Unhandled exception caught by the Orchestrator.
-- **F-REQ-12.2 (Standard Metadata)**: Failure payloads shall include `expected` vs `actual` values (where applicable) and optionally a `suggested_fix_hint`.
-- **F-REQ-12.3 (Synthesized Flag)**: Every failure signal shall include an `orchestrator_synthesized` boolean. If `true`, the Super-Orchestrator should prioritize the `traceback` metadata over any `suggested_fix_hint`.
+- **F-REQ-8 (Standard Metadata)**: Failure payloads shall include `expected` vs `actual` values (where applicable) and optionally a `suggested_fix_hint` (plain language) to ground the Super-Orchestrator's repair logic.
+- **F-REQ-9 (Synthesized Flag)**: Every failure signal shall include an `orchestrator_synthesized` boolean. If `true`, the Super-Orchestrator should prioritize the `traceback` metadata over any `suggested_fix_hint`.
 
 ### 2.2.2 Signal Escalation & Auto-Recovery
-- **F-REQ-15.1 (Deterministic Escalation)**: The Orchestrator shall implement a time-and-retry-based escalation path:
+- **F-REQ-10 (Deterministic Escalation)**: The Orchestrator shall implement a time-and-retry-based escalation path:
     - `NEED_INFO` signals shall follow the `escalation_policy` defined in the manifest.
     - **Inheritance Model**: Node-level policy overrides Bag-level policy; Bag-level policy overrides Orchestrator system defaults.
     - Upon budget exhaustion (timeout or max retries), the Orchestrator shall automatically promote the signal to `NEED_INTERVENTION`.
-- **F-REQ-15.2 (Exception Interception)**: The Orchestrator shall wrap all node executions in an exception handler. If a node crashes without returning a `ClawOutput`, the Orchestrator shall synthesize a `FAILED` signal with a `SYSTEM_CRASH` failure class and include the traceback in the `error_detail`.
+- **F-REQ-11 (Exception Interception)**: The Orchestrator shall wrap all node executions in an exception handler. If a node crashes without returning a `ClawOutput`, the Orchestrator shall synthesize a `FAILED` signal with a `SYSTEM_CRASH` failure class and include the traceback in the `error_detail`.
 
 ### 2.2.3 Orchestrator Status Events
 To provide high-fidelity monitoring, the Orchestrator emits status events directly to the Signal Manager. These are NOT part of the node contract:
 - **`STALLED`**: Emitted when a node's `requires` prerequisites are not yet met in the `document_archive`.
 - **`RUNNING`**: Emitted when a node has successfully started execution.
 - **`RESOLVING`**: Emitted when the Orchestrator is performing prerequisite re-evaluation.
-- **F-REQ-7 (Hub-and-Spoke Routing)**: Finished nodes shall return control and a payload to the Orchestrator (the Hub), which determines the next activation based on the signal.
-- **F-REQ-8 (Signal Bubble / Aggregation)**: Parallel execution (fan-out/fan-in) managed via subgraphs shall act as a "Signal Bubble." The Orchestrator only receives a single completion signal from the subgraph's **Aggregator Node**. Individual branch signals (`FAILED`, `DONE`) are consumed by the Aggregator and merged into the final `ClawOutput`.
+- **F-REQ-12 (Hub-and-Spoke Routing)**: Finished nodes shall return control and a payload to the Orchestrator (the Hub), which determines the next activation based on the signal.
+- **F-REQ-13 (Signal Bubble / Aggregation)**: Parallel execution (fan-out/fan-in) managed via subgraphs shall act as a "Signal Bubble." The Orchestrator only receives a single completion signal from the subgraph's **Aggregator Node**.
+    - **Abtraction Layer**: The Aggregator's job is to produce the correct abstraction level for the Orchestrator context (summarized progress) while the underlying Signal Manager/Timeline maintains the full-fidelity record of all branch signals for auditing.
+    - **Merge Semantics**: The Aggregator emits a consolidated signal:
+        - All branches `DONE` → emit `DONE`.
+        - Any branch `FAILED` → emit `FAILED` or `PARTIAL` based on the significance of the failure to the phase goal.
+        - Any branch `NEED_INFO`/`HOLD_FOR_HUMAN` → emit the respective signal (pausing/suspending the bubble).
+        - Mixed `DONE`/`FAILED` results → emit `PARTIAL` with a rolled-up summary and branch-level details in `error_detail`.
+    - **Partial Commit Policy**: The Aggregator shall respect a configurable `partial_commit_policy` (`eager` | `atomic`).
+        - `eager`: Completed branch artifacts are committed to the Document Archive immediately upon branch completion. They are not rolled back regardless of the bubble's terminal signal.
+        - `atomic`: All artifact commits are deferred until the Aggregator emits its consolidated terminal signal.
 
-### 2.3 Context & Memory Management
-- **F-REQ-9 (Integrated Summaries)**: Nodes shall generate an accomplishment summary as part of their structured output (e.g., via a Pydantic schema used in the primary LLM call) rather than a secondary call.
-- **F-REQ-10 (Pointer-Based State)**: The global state shall store references/pointers to documents and artifacts rather than raw text blobs.
-- **F-REQ-11 (Selective Memory Pruning)**: The system shall automatically remove raw tool outputs from the active context once a phase summary is generated.
-- **F-REQ-12 (Mission Control View)**: Expose a telemetry stream from the Signal Manager that can be rendered into a live status/trace visualizer.
+### 2.3 Context & Artifact Management
+- **F-REQ-14 (Integrated Summaries)**: Nodes shall generate an accomplishment summary as part of their structured output (e.g., via a Pydantic schema used in the primary LLM call) rather than a secondary call.
+- **F-REQ-15 (Pointer-Based State)**: The global state shall store references/pointers to documents and artifacts rather than raw text blobs.
+- **F-REQ-16 (Selective Memory Pruning)**: The system shall automatically remove raw tool outputs from the active context once a phase summary is generated.
+- **F-REQ-17 (Multi-Domain Document Tagging)**: The Document Archive shall support multi-bag tagging to allow artifacts to be visible across sovereign workspaces while maintaining a strict "owner" domain and preventing unauthorized cross-talk (Traceability: B-REQ-13).
+- **F-REQ-18 (Mission Control View)**: Expose a telemetry stream from the Signal Manager that can be rendered into a live status/trace visualizer.
 
 ### 2.4 Lead-Teammate Interaction (Super-Orchestrator Support)
-- **F-REQ-13 (On-Demand Auditing)**: The system shall allow the Super-Orchestrator to retrieve a pointer-based trace of raw outputs (Audit Log) for ANY node at any time.
-- **F-REQ-14 (Proactive Security Hardening)**: The system shall support **Injection Testing** (re-running nodes with mutated/adversarial inputs) as a first-class security workflow to detect privilege escalation and rogue behavior.
-- **F-REQ-15 (Grounding & Discovery)**: The system shall provide a "Bag-Inventory" tool for the Super-Orchestrator to query all current node summaries and metadata before initiating CRUD operations.
-- **F-REQ-16 (Generate-Test-Reinforce Loop)**: The system shall support "Verification Nodes" that can trigger rollbacks or code-edits by the Super-Orchestrator upon task failure.
-- **F-REQ-17 (Loop Governance)**: The system shall enforce a configurable maximum iteration limit (Hyperparameter) for the optimization loop, escalating to the user upon exhaustion.
-- **F-REQ-18 (State Drift Escalation)**: On state schema mismatch or drift, the Orchestrator shall emit a `NEED_INTERVENTION` signal to the Super-Orchestrator for repair.
+- **F-REQ-19 (On-Demand Auditing)**: The system shall allow the Super-Orchestrator to retrieve a pointer-based trace of raw outputs (Audit Log) for ANY node at any time.
+- **F-REQ-20 (Proactive Security Hardening)**: The system shall support **Injection Testing** (re-running nodes with mutated/adversarial inputs) as a first-class security workflow to detect privilege escalation and rogue behavior.
+- **F-REQ-21 (Grounding & Discovery)**: The system shall provide a "Bag-Inventory" tool for the Super-Orchestrator to query all current node summaries and metadata before initiating CRUD operations.
+- **F-REQ-22 (Generate-Test-Reinforce Loop)**: The system shall support "Verification Nodes" that can trigger rollbacks or code-edits by the Super-Orchestrator upon task failure.
+- **F-REQ-23 (Loop Governance)**: The system shall enforce a configurable maximum iteration limit (Hyperparameter) for the optimization loop, escalating to the user upon exhaustion.
+- **F-REQ-24 (State Drift Escalation)**: On state schema mismatch or drift, the Orchestrator shall emit a `NEED_INTERVENTION` signal to the Super-Orchestrator for repair.
 
 ### 2.5 Governance & Safety
-- **F-REQ-19 (Bag Contract)**: Each bag shall define a strict schema for its inputs and outputs to ensure node compatibility and prevent state drift.
-- **F-REQ-20 (Human-in-the-Loop)**: HITL is implemented via the `HOLD_FOR_HUMAN` signal. Nodes requiring approval shall include a `human_request` payload.
+- **F-REQ-25 (Bag Contract)**: Each bag shall define a strict schema for its inputs and outputs to ensure node compatibility and prevent state drift.
+- **F-REQ-26 (Human-in-the-Loop)**: HITL is implemented via the `HOLD_FOR_HUMAN` signal. Nodes requiring approval shall include a `human_request` payload.
     - **Suspension**: The Orchestrator shall checkpoint the state and suspend the thread (non-blocking).
     - **Hand-off**: The system shall call a registered `hitl_handler(thread_id, human_request)` callback to surface the request to the delivery layer (UI/Slack/Email).
     - **Resumption**: The system shall provide a `resume_job` API to inject the human's response and restart the thread from the checkpoint.
-- **F-REQ-21 (Audit Triggers)**: 
+- **F-REQ-27 (Audit Triggers)**: 
     - **Worker-Led**: The `ClawOutput` schema shall include an optional `audit_hint` field to signal that a result warrants deeper critique.
     - **Architect-Led**: The system shall support persistent `audit_policy` rules in node metadata that mandate auditing under specific conditions (e.g., `always: true`).
-- **F-REQ-22 (Cold-Start Bootstrap)**: The system shall support initializing a `ClawBag` from a fully blank state. The Super-Orchestrator must be able to call `get_inventory()` on an empty bag (returning an empty manifest) and incrementally build the bag via sequential `register_node` calls before any job is started.
-- **F-REQ-23 (HUD Snapshot)**: The system shall provide a `get_hud_snapshot()` API that returns a merged JSON view of the Bag Manifest (topology) and the Signal Manager's live status (node status, last signal, summaries) for real-time visualization.
+- **F-REQ-28 (Cold-Start Bootstrap)**: The system shall support initializing a `ClawBag` from a fully blank state. The Super-Orchestrator must be able to call `get_inventory()` on an empty bag (returning an empty manifest) and incrementally build the bag via sequential `register_node` calls before any job is started.
+- **F-REQ-29 (HUD Snapshot)**: The system shall provide a `get_hud_snapshot()` API that returns a merged JSON view of the Bag Manifest (topology) and the Signal Manager's live status (node status, last signal, summaries) for real-time visualization.
 
 ### 2.6 Timeline & Observability
-- **F-REQ-24 (Event Log API)**: The system shall provide a `get_timeline(thread_id)` API that retrieves a durable stream of lifecycle events from the Session DB.
-- **F-REQ-25 (Event Schema)**: Every timeline event shall follow a standardized schema: `{event_id, timestamp, node_id, signal, summary, duration_ms, tier, metadata}`.
-- **F-REQ-26 (HITL Context Window)**: When a `HOLD_FOR_HUMAN` signal is emitted, the system shall automatically package the preceding $N$ events (default 5) into the intervention payload to provide lead-up context.
-- **F-REQ-27 (Timeline Seek & Inspect)**: The system shall support retrieving the full archival state (Tier 3) associated with any historical event's `result_uri` to facilitate retrospective auditing.
-- **F-REQ-28 (Prerequisite Re-evaluation)**: The Orchestrator shall re-evaluate the `STALLED` queue immediately after every `DONE` signal. Any nodes whose `requires` list is now satisfied by the updated `document_archive` shall be moved to the `READY` queue.
+- **F-REQ-30 (Event Log API)**: The system shall provide a `get_timeline(thread_id)` API that retrieves a durable stream of lifecycle events from the Session DB.
+- **F-REQ-31 (Event Schema)**: Every timeline event shall follow a standardized schema: `{event_id, timestamp, node_id, signal, summary, duration_ms, tier, metadata}`.
+- **F-REQ-32 (HITL Context Window)**: When a `HOLD_FOR_HUMAN` signal is emitted, the system shall automatically package the preceding $N$ events (default 5) into the intervention payload to provide lead-up context.
+- **F-REQ-33 (Timeline Seek & Inspect)**: The system shall support retrieving the full archival state (Tier 3) associated with any historical event's `result_uri` to facilitate retrospective auditing.
+- **F-REQ-34 (Prerequisite Re-evaluation)**: The Orchestrator shall re-evaluate the `STALLED` queue immediately after every `DONE` signal. Any nodes whose `requires` list is now satisfied by the updated `document_archive` shall be moved to the `READY` queue.
 
 ## 3. Interfaces
 

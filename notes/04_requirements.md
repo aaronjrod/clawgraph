@@ -32,7 +32,7 @@ ClawGraph is a next-generation agent orchestration library designed to reconcile
 - **Role**: A flat or hierarchical collection of addressable LangGraph nodes/subgraphs.
 - **Features**:
     - **Individual Addressability**: Nodes can be called independently of a graph structure.
-    - **Signal-on-Done**: Nodes emit completion signals: `DONE`, `FAILED`, `NEED_INFO`, `HOLD_FOR_HUMAN`, `NEED_INTERVENTION`.
+    - **Signal-on-Done**: Nodes emit completion signals: `DONE`, `FAILED`, `PARTIAL`, `NEED_INFO`, `HOLD_FOR_HUMAN`, `NEED_INTERVENTION`.
     - **Agent Cards**: Each node exposes metadata (JSON-LD) describing inputs, outputs, and function summary.
 
 ---
@@ -43,7 +43,7 @@ ClawGraph is a next-generation agent orchestration library designed to reconcile
 - The system must support asynchronous event propagation.
 - **Node-Managed Parallelism**: The Orchestrator calls a single node/subgraph; internal fan-out/fan-in and synchronization are managed within that node's internal graph logic (using Aggregator Nodes), returning a single signal to the Orchestrator.
 - **Discovery-First Flow**: The Super-Orchestrator must query the Bag Inventory before initiating CRUD operations to prevent redundant implementations.
-- Nodes must emit signals to a central Hub (Orchestrator) for routing decisions. Supported signals: `DONE`, `FAILED`, `NEED_INFO`, `HOLD_FOR_HUMAN`, `NEED_INTERVENTION`.
+- Nodes must emit signals to a central Hub (Orchestrator) for routing decisions. Supported signals: `DONE`, `FAILED`, `PARTIAL`, `NEED_INFO`, `HOLD_FOR_HUMAN`, `NEED_INTERVENTION`.
 
 ### 3.2 Dynamic CRUD Operations
 - The library must provide APIs for adding, reading, updating, deleting, and listing nodes in the bag at runtime.
@@ -61,6 +61,7 @@ ClawGraph is a next-generation agent orchestration library designed to reconcile
 - Use pointers/references to documents instead of passing raw content between nodes.
 - Global state should be minimal, consisting of metadata, instructions, and pointers to external resources.
 - **Bag Contracts**: Define strict input/output schemas per bag to prevent state drift.
+- **Multi-Domain Document Tagging**: Enable artifacts to be visible across sovereign workspaces with strict owner-domain enforcement (B-REQ-13).
 - **Escalation**: The Orchestrator must escalate schema drift to the Super-Orchestrator for repair.
 
 ---
