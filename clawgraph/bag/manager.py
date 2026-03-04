@@ -9,8 +9,9 @@ Spec ref: 03_FRS.md §2.1, 05_ARCHITECTURE.md §3
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -47,7 +48,7 @@ class BagManager:
 
     def __init__(self, name: str) -> None:
         self._manifest = BagManifest(name=name)
-        self._node_fns: dict[str, Callable] = {}  # node_id → actual function (Tier 2)
+        self._node_fns: dict[str, Callable[..., Any]] = {}  # node_id → actual function (Tier 2)
         self._locked: bool = False
         self._inventory_queried: bool = False
 
@@ -82,8 +83,8 @@ class BagManager:
 
     def register_node(
         self,
-        node_fn: Callable,
-        metadata: Optional[ClawNodeMetadata] = None,
+        node_fn: Callable[..., Any],
+        metadata: ClawNodeMetadata | None = None,
     ) -> ClawNodeMetadata:
         """Register a node into the bag. (F-REQ-1)
 
@@ -136,8 +137,8 @@ class BagManager:
         self,
         node_id: str,
         *,
-        node_fn: Optional[Callable] = None,
-        metadata: Optional[ClawNodeMetadata] = None,
+        node_fn: Callable[..., Any] | None = None,
+        metadata: ClawNodeMetadata | None = None,
         **field_updates: Any,
     ) -> ClawNodeMetadata:
         """Update an existing node's code and/or metadata. (F-REQ-1)
@@ -216,7 +217,7 @@ class BagManager:
         )
         return removed
 
-    def get_node_fn(self, node_id: str) -> Callable:
+    def get_node_fn(self, node_id: str) -> Callable[..., Any]:
         """Retrieve a node's function by ID (Tier 2 access)."""
         if node_id not in self._node_fns:
             raise KeyError(
@@ -226,7 +227,7 @@ class BagManager:
 
     # ── Inventory ──────────────────────────────────────────────────
 
-    def get_inventory(self) -> dict:
+    def get_inventory(self) -> dict[str, Any]:
         """Return a Tier 1 manifest summary for SO consumption. (F-REQ-21)
 
         Marks the bag as inventory-queried (Discovery-First discipline).

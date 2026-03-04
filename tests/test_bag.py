@@ -7,7 +7,6 @@ from clawgraph.bag.node import ClawNodeMetadata, clawnode
 from clawgraph.core.exceptions import ManifestLockedError
 from clawgraph.core.models import ClawOutput, Signal
 
-
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
 

@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import functools
 import logging
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -27,14 +28,14 @@ class ClawNodeMetadata(BaseModel):
     id: str
     description: str
     bag: str
-    provider: Optional[str] = None  # e.g., "anthropic", "openai", "google"
-    model: Optional[str] = None  # e.g., "claude-3-5-sonnet", "gpt-4o"
+    provider: str | None = None  # e.g., "anthropic", "openai", "google"
+    model: str | None = None  # e.g., "claude-3-5-sonnet", "gpt-4o"
     skills: list[str] = Field(default_factory=list)  # .md skill file paths
     tools: list[str] = Field(default_factory=list)  # Authorized tool identifiers
     tags: list[str] = Field(default_factory=list)  # Searchable labels
     requires: list[str] = Field(default_factory=list)  # Prerequisite artifact IDs
-    escalation_policy: Optional[dict] = None  # {ttl_seconds, max_retries}
-    audit_policy: Optional[dict] = None  # {always: bool, ...}
+    escalation_policy: dict[str, Any] | None = None  # {ttl_seconds, max_retries}
+    audit_policy: dict[str, Any] | None = None  # {always: bool, ...}
 
 
 def clawnode(
@@ -42,15 +43,15 @@ def clawnode(
     id: str,
     description: str,
     bag: str,
-    provider: Optional[str] = None,
-    model: Optional[str] = None,
-    skills: Optional[list[str]] = None,
-    tools: Optional[list[str]] = None,
-    tags: Optional[list[str]] = None,
-    requires: Optional[list[str]] = None,
-    escalation_policy: Optional[dict] = None,
-    audit_policy: Optional[dict] = None,
-) -> Callable:
+    provider: str | None = None,
+    model: str | None = None,
+    skills: list[str] | None = None,
+    tools: list[str] | None = None,
+    tags: list[str] | None = None,
+    requires: list[str] | None = None,
+    escalation_policy: dict[str, Any] | None = None,
+    audit_policy: dict[str, Any] | None = None,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator that registers a function as a ClawNode.
 
     Captures metadata and attaches it to the function as `_clawnode_metadata`.
@@ -80,7 +81,7 @@ def clawnode(
         audit_policy=audit_policy,
     )
 
-    def decorator(fn: Callable) -> Callable:
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             from clawgraph.core.models import ClawOutput

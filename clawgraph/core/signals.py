@@ -11,10 +11,9 @@ Architecture ref: 05_ARCHITECTURE.md §10
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from clawgraph.core.exceptions import SchemaVersionError
 from clawgraph.core.models import ClawOutput, Signal
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 CURRENT_SCHEMA_VERSION = 1
 
 
-class NodeStatus(str, Enum):
+class NodeStatus(StrEnum):
     """Internal status tracked by the SignalManager (NOT a node output signal)."""
 
     PENDING = "PENDING"
@@ -55,10 +54,10 @@ class NodeState:
 
     node_id: str
     status: NodeStatus = NodeStatus.PENDING
-    last_signal: Optional[Signal] = None
-    last_summary: Optional[str] = None
-    last_output_id: Optional[str] = None
-    updated_at: Optional[datetime] = None
+    last_signal: Signal | None = None
+    last_summary: str | None = None
+    last_output_id: str | None = None
+    updated_at: datetime | None = None
 
 
 class SignalManager:
@@ -158,11 +157,11 @@ class SignalManager:
         state.status = NodeStatus.STALLED
         state.updated_at = datetime.now()
 
-    def get_node_state(self, node_id: str) -> Optional[NodeState]:
+    def get_node_state(self, node_id: str) -> NodeState | None:
         """Get the current state of a specific node."""
         return self._node_states.get(node_id)
 
-    def get_hud_snapshot(self) -> dict:
+    def get_hud_snapshot(self) -> dict[str, dict[str, str | None]]:
         """Return the current state of all tracked nodes for HUD rendering.
 
         Returns a dict keyed by node_id with status, last_signal, and summary.

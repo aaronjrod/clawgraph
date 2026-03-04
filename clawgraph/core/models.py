@@ -8,17 +8,16 @@ Every ClawNode produces a ClawOutput; both the Orchestrator and Signal Manager c
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, model_validator
 
-
 # ── Enums ──────────────────────────────────────────────────────────────────────
 
 
-class Signal(str, Enum):
+class Signal(StrEnum):
     """Terminal signal emitted by every ClawNode."""
 
     DONE = "DONE"
@@ -29,7 +28,7 @@ class Signal(str, Enum):
     NEED_INTERVENTION = "NEED_INTERVENTION"
 
 
-class FailureClass(str, Enum):
+class FailureClass(StrEnum):
     """Categorizes the root cause of a FAILED or PARTIAL signal. (F-REQ-7)"""
 
     LOGIC_ERROR = "LOGIC_ERROR"
@@ -51,10 +50,10 @@ class ErrorDetail(BaseModel):
 
     failure_class: FailureClass
     message: str  # Human-readable error description.
-    expected: Optional[str] = None  # What the node expected (if applicable).
-    actual: Optional[str] = None  # What actually happened (if applicable).
-    suggested_fix_hint: Optional[str] = None  # Plain-language fix hint for SO repair.
-    traceback: Optional[str] = None  # Python traceback. Populated on SYSTEM_CRASH.
+    expected: str | None = None  # What the node expected (if applicable).
+    actual: str | None = None  # What actually happened (if applicable).
+    suggested_fix_hint: str | None = None  # Plain-language fix hint for SO repair.
+    traceback: str | None = None  # Python traceback. Populated on SYSTEM_CRASH.
 
 
 class InfoRequest(BaseModel):
@@ -75,7 +74,7 @@ class HumanRequest(BaseModel):
     """
 
     message: str  # The complete request for the human.
-    action_type: Optional[str] = None  # e.g., "approve_shell", "review_diff"
+    action_type: str | None = None  # e.g., "approve_shell", "review_diff"
 
 
 class BranchResult(BaseModel):
@@ -85,8 +84,8 @@ class BranchResult(BaseModel):
     node_id: str
     signal: Signal
     summary: str
-    result_uri: Optional[str] = None
-    error_detail: Optional[ErrorDetail] = None
+    result_uri: str | None = None
+    error_detail: ErrorDetail | None = None
 
 
 # ── ClawOutput (Canonical Model) ──────────────────────────────────────────────
@@ -115,58 +114,52 @@ class ClawOutput(BaseModel):
     signal: Signal
     node_id: str
     orchestrator_summary: str
-    result_uri: Optional[str] = None
-    audit_hint: Optional[bool] = None
+    result_uri: str | None = None
+    audit_hint: bool | None = None
     orchestrator_synthesized: bool = False
 
     # ── Detail Payload ─────────────────────────────────────────────
-    operator_summary: Optional[str] = None
-    error_detail: Optional[ErrorDetail] = None
-    info_request: Optional[InfoRequest] = None
-    human_request: Optional[HumanRequest] = None
-    continuation_context: Optional[dict] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    operator_summary: str | None = None
+    error_detail: ErrorDetail | None = None
+    info_request: InfoRequest | None = None
+    human_request: HumanRequest | None = None
+    continuation_context: dict[str, Any] | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     # ── Validators ─────────────────────────────────────────────────
 
     @model_validator(mode="after")
     def validate_signal_requirements(self) -> ClawOutput:
         """Enforce signal-conditional field requirements at instantiation."""
-        if self.signal == Signal.FAILED:
-            if self.error_detail is None:
-                raise ValueError("FAILED signal requires error_detail.")
+        if self.signal == Signal.FAILED and self.error_detail is None:
+            raise ValueError("FAILED signal requires error_detail.")
 
-        if self.signal == Signal.PARTIAL:
-            if self.result_uri is None:
-                raise ValueError(
-                    "PARTIAL signal requires result_uri "
-                    "(partial artifacts must be committed)."
-                )
+        if self.signal == Signal.PARTIAL and self.result_uri is None:
+            raise ValueError(
+                "PARTIAL signal requires result_uri "
+                "(partial artifacts must be committed)."
+            )
 
-        if self.signal == Signal.DONE:
-            if self.result_uri is None:
-                raise ValueError(
-                    "DONE signal requires result_uri "
-                    "(what did the node produce?)."
-                )
+        if self.signal == Signal.DONE and self.result_uri is None:
+            raise ValueError(
+                "DONE signal requires result_uri "
+                "(what did the node produce?)."
+            )
 
-        if self.signal == Signal.NEED_INFO:
-            if self.info_request is None:
-                raise ValueError("NEED_INFO signal requires info_request payload.")
+        if self.signal == Signal.NEED_INFO and self.info_request is None:
+            raise ValueError("NEED_INFO signal requires info_request payload.")
 
-        if self.signal == Signal.HOLD_FOR_HUMAN:
-            if self.human_request is None:
-                raise ValueError(
-                    "HOLD_FOR_HUMAN signal requires human_request payload."
-                )
+        if self.signal == Signal.HOLD_FOR_HUMAN and self.human_request is None:
+            raise ValueError(
+                "HOLD_FOR_HUMAN signal requires human_request payload."
+            )
 
-        if self.signal == Signal.NEED_INTERVENTION:
-            if self.error_detail is None:
-                raise ValueError(
-                    "NEED_INTERVENTION signal requires error_detail "
-                    "(what drifted?)."
-                )
+        if self.signal == Signal.NEED_INTERVENTION and self.error_detail is None:
+            raise ValueError(
+                "NEED_INTERVENTION signal requires error_detail "
+                "(what drifted?)."
+            )
 
         return self
 
