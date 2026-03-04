@@ -10,38 +10,42 @@ Every node in a ClawGraph bag — regardless of what it does internally — must
 
 ### 1.1 Required Output Schema
 
+> **Canonical Definition**: [12_clawoutput_spec.md](file:///Users/aaronrodrigues/projects/clawgraph/notes/12_clawoutput_spec.md)
+>
+> The full Pydantic model with validators, sub-models, and design rationale lives in the canonical spec. Below is a simplified quick-reference for use in pattern examples.
+
 ```python
-from pydantic import BaseModel
-from enum import Enum
+from clawgraph.core.models import ClawOutput, Signal
 
-class Signal(str, Enum):
-    DONE               = "DONE"
-    FAILED             = "FAILED"
-    PARTIAL            = "PARTIAL"          # Phase complete with mixed results.
-    NEED_INFO          = "NEED_INFO"
-    HOLD_FOR_HUMAN     = "HOLD_FOR_HUMAN"
-    NEED_INTERVENTION  = "NEED_INTERVENTION"
-
-class ClawOutput(BaseModel):
-    signal: Signal
-    summary: str                        # Concise accomplishment summary (1-3 sentences).
-                                        # This is what the Orchestrator sees. Keep it tight.
-    result_uri: str | None = None       # Pointer to the artifact/document produced.
-    human_request: str | None = None    # Required when signal == HOLD_FOR_HUMAN.
-    error_detail: dict | None = None     # Required when signal == FAILED, PARTIAL, or NEED_INTERVENTION.
-                                        # MUST include failure_class if any branches failed or for terminal failure.
-    audit_hint: str | None = None       # Optional: Flag that this output warrants deep critique.
-                                        # Future: triggers a CritiqueNode.
+# Quick-Reference: Routing Envelope (what the Orchestrator sees)
+# ──────────────────────────────────────────────────────────────
+# signal: Signal                       — Terminal signal. Drives all routing.
+# node_id: str                         — ID of the emitting node.
+# orchestrator_summary: str            — Terse, routing-relevant (1-2 sentences).
+# result_uri: str | None               — Pointer to artifact. REQUIRED for DONE/PARTIAL.
+# audit_hint: bool | None              — True = self-flag for critique. None ≠ False.
+# orchestrator_synthesized: bool       — Provenance marker (Orchestrator constructed this).
+#
+# Detail Payload (persisted to timeline, not routed over)
+# ──────────────────────────────────────────────────────────────
+# operator_summary: str | None         — Human-readable summary for HUD. Falls back to orchestrator_summary.
+# error_detail: ErrorDetail | None     — Required on FAILED/PARTIAL/NEED_INTERVENTION.
+# info_request: InfoRequest | None     — Required on NEED_INFO.
+# human_request: HumanRequest | None   — Required on HOLD_FOR_HUMAN.
+# continuation_context: dict | None    — Opaque state for suspended node resumption.
+# started_at / completed_at: datetime  — Self-reported timing.
+# schema_version: int                  — For migration safety.
+# output_id: str                       — UUID for idempotency on replay.
 ```
 
 **Rules:**
-- `summary` is always required. It is the Orchestrator's only view into what the node did.
-- `result_uri` should point to a stored artifact (DB, object store, etc.) — **never** inline raw content into the output.
+- `orchestrator_summary` is always required. It is the Orchestrator's only view into what the node did.
+- `result_uri` should point to a stored artifact (DB, object store, etc.) — **never** inline raw content into the output. Required for `DONE` and `PARTIAL`.
 - If the Orchestrator or Super-Orchestrator needs the full output, they call `audit_node(node_id)`.
 - **Signals (audit_hint vs. audit_policy)**: 
-    - **`audit_hint` (Worker-led)**: A node self-flags as high-stakes (e.g., "I just generated complex code").
-    - **`audit_policy` (Architect-led)**: Defined in node metadata. The Super-Orchestrator can mandate audits (e.g., `audit_policy: { always: true }`) regardless of the node's signal. Authority rests with the Architect.
-- `human_request` must be a complete, self-contained message — assume the human has no prior context.
+    - **`audit_hint` (Worker-led)**: A boolean. `True` = self-flag for audit. `None` = no preference (defer to policy). `False` = explicitly opted out.
+    - **`audit_policy` (Architect-led)**: Defined in node metadata. The Super-Orchestrator can mandate audits (e.g., `audit_policy: { always: true }`) regardless of the node's signal. **Policy > Hint** (F-REQ-27).
+- `human_request` must be a complete, self-contained `HumanRequest` — assume the human has no prior context.
 
 ---
 
@@ -90,7 +94,7 @@ def regulatory_audit(inputs: dict) -> ClawOutput:
 The baseline pattern. One job, one output.
 
 ```python
-from clawgraph import ClawNode, ClawOutput, Signal
+from clawgraph.core.models import ClawOutput, Signal
 @ClawNode(name="summarize_document", description="Reads a document URI and returns a summary.")
 def summarize_document(state: BagState) -> ClawOutput:
     doc = fetch(state["document_archive"]["target_doc"])
@@ -98,14 +102,15 @@ def summarize_document(state: BagState) -> ClawOutput:
     uri = store(summary_text)                       # Store result, return pointer
     return ClawOutput(
         signal=Signal.DONE,
-        summary=f"Summarized document. Key finding: {summary_text[:120]}...",
+        node_id="summarize_document",
+        orchestrator_summary=f"Summarized document. Key finding: {summary_text[:120]}...",
         result_uri=uri
     )
 ```
 
 **Rules:**
 - Never return raw text in `result_uri`. Always store first, return the pointer.
-- `summary` should capture the *salient finding*, not just confirm the task ran.
+- `orchestrator_summary` should capture the *salient finding*, not just confirm the task ran.
 
 ---
 
@@ -120,18 +125,23 @@ def execute_shell_command(state: BagState) -> ClawOutput:
     if not state.get("shell_approved"):
         return ClawOutput(
             signal=Signal.HOLD_FOR_HUMAN,
-            summary="Awaiting human approval to run shell command.",
-            human_request=(
-                f"The agent wants to run the following shell command:\n\n"
-                f"```\n{command}\n```\n\n"
-                f"Please approve or reject."
+            node_id="execute_shell_command",
+            orchestrator_summary="Awaiting human approval to run shell command.",
+            human_request=HumanRequest(
+                message=(
+                    f"The agent wants to run the following shell command:\n\n"
+                    f"```\n{command}\n```\n\n"
+                    f"Please approve or reject."
+                ),
+                action_type="approve_shell"
             )
         )
     result = subprocess.run(command, capture_output=True)
     uri = store(result.stdout)
     return ClawOutput(
         signal=Signal.DONE,
-        summary=f"Shell command executed successfully. Exit code: {result.returncode}.",
+        node_id="execute_shell_command",
+        orchestrator_summary=f"Shell command executed successfully. Exit code: {result.returncode}.",
         result_uri=uri
     )
 ```
@@ -167,26 +177,35 @@ def aggregator(state: SubgraphState) -> ClawOutput:
     
     # 3. Decision Logic
     if failures and done_count > 0:
-        return ClawOutput(
+        return AggregatorOutput(
             signal=Signal.PARTIAL,
-            summary=f"Phase completed with mixed results ({done_count}/{len(results)} passed).",
-            error_detail={
-                "type": "AGGREGATE_PARTIAL",
-                "failures": failures,
-                "passed_count": done_count
-            }
+            node_id="aggregator",
+            orchestrator_summary=f"Phase completed with mixed results ({done_count}/{len(results)} passed).",
+            result_uri=store(results),
+            error_detail=ErrorDetail(
+                failure_class=FailureClass.LOGIC_ERROR,
+                message=f"{len(failures)} branch(es) failed."
+            ),
+            branch_breakdown=[...]  # Populate from branch results
         )
     elif failures:
-        return ClawOutput(
+        return AggregatorOutput(
             signal=Signal.FAILED,
-            summary="All branches failed.",
-            error_detail={"type": "AGGREGATE_FAILURE", "failures": failures}
+            node_id="aggregator",
+            orchestrator_summary="All branches failed.",
+            error_detail=ErrorDetail(
+                failure_class=FailureClass.LOGIC_ERROR,
+                message="All parallel branches failed."
+            ),
+            branch_breakdown=[...]  # Populate from branch results
         )
     
-    return ClawOutput(
+    return AggregatorOutput(
         signal=Signal.DONE,
-        summary="All parallel checks passed successfully.",
-        result_uri=store(results)
+        node_id="aggregator",
+        orchestrator_summary="All parallel checks passed successfully.",
+        result_uri=store(results),
+        branch_breakdown=[...]  # Populate from branch results
     )
 ```
 
@@ -210,16 +229,20 @@ def verify_python_output(state: BagState) -> ClawOutput:
     if not test_results.passed:
         return ClawOutput(
             signal=Signal.FAILED,
-            summary=f"Verification failed. {test_results.failure_count} tests failed.",
-            error_detail={
-                "failure_count": test_results.failure_count,
-                "log": test_results.failure_log
-            },
+            node_id="verify_python_output",
+            orchestrator_summary=f"Verification failed. {test_results.failure_count} tests failed.",
+            error_detail=ErrorDetail(
+                failure_class=FailureClass.LOGIC_ERROR,
+                message=f"{test_results.failure_count} tests failed.",
+                expected="All tests passing",
+                actual=f"{test_results.failure_count} failures"
+            ),
             result_uri=store(test_results)
         )
     return ClawOutput(
         signal=Signal.DONE,
-        summary=f"All {test_results.total} tests passed.",
+        node_id="verify_python_output",
+        orchestrator_summary=f"All {test_results.total} tests passed.",
         result_uri=store(test_results)
     )
 ```

@@ -70,17 +70,27 @@ Nodes are authorized to use specific **Tools**.
 ### 4. Signal-Based Output (`ClawOutput`)
 Every node must return a `ClawOutput`, which dictates the flow of the entire Bag.
 
+> **Canonical Definition**: [12_clawoutput_spec.md](file:///Users/aaronrodrigues/projects/clawgraph/notes/12_clawoutput_spec.md)
+>
+> The full Pydantic model with all fields, validators, and sub-models is defined in the canonical spec. Key fields for node authors:
+
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| **`signal`** | `Signal` | `DONE`, `FAILED`, `NEED_INFO`, `WORKING`, `HOLD_FOR_HUMAN`. |
-| **`summary`** | `str` | Plain-text explanation for the Architect/HUD. |
-| **`info_request`** | `dict` | **Mandatory on `NEED_INFO`**. Includes `{question: str, target: SO|USER|EITHER, context: str}`. |
-| **`result_uri`** | `str` | (Optional) Pointer to Tier 3 results (S3, local path, etc). |
-| **`error_detail`** | `dict` | **Mandatory on `FAILED`**. Must include a `failure_class` and `orchestrator_synthesized` boolean. |
-| **`next_steps_hint`** | `list[str]` | **Recommendations for the SO**. Does NOT directly trigger other nodes. |
+| **`signal`** | `Signal` | `DONE`, `FAILED`, `PARTIAL`, `NEED_INFO`, `HOLD_FOR_HUMAN`, `NEED_INTERVENTION`. |
+| **`node_id`** | `str` | Unique identifier for this node. |
+| **`orchestrator_summary`** | `str` | Terse, routing-relevant explanation (1-2 sentences). |
+| **`operator_summary`** | `str \| None` | Human-readable summary for HUD. Falls back to `orchestrator_summary` if None. |
+| **`result_uri`** | `str \| None` | Pointer to Tier 3 results. **Required** for `DONE` and `PARTIAL`. |
+| **`error_detail`** | `ErrorDetail \| None` | **Required** on `FAILED`, `PARTIAL` (with failures), `NEED_INTERVENTION`. Structured Pydantic model with `failure_class`. |
+| **`info_request`** | `InfoRequest \| None` | **Required** on `NEED_INFO`. Includes `question`, `context`, `target`. |
+| **`human_request`** | `HumanRequest \| None` | **Required** on `HOLD_FOR_HUMAN`. Self-contained message for the human. |
+| **`audit_hint`** | `bool \| None` | `True` = self-flag for audit. `None` = no preference. `False` = opted out. |
+| **`continuation_context`** | `dict \| None` | Opaque state for suspended node resumption on `NEED_INFO`/`HOLD_FOR_HUMAN`. |
+
+#### Sovereign Delegation via SO-Skill Context
 
 > [!TIP]
-> **Sovereign Delegation**: By providing `next_steps_hint`, a node recommends a tactical path to the Super-Orchestrator. This preserves the decoupling between bags—a Regulatory specialist doesn't need to know the internal structure of the CMC bag; it simply hints that "CMC validation is likely next."
+> **`next_steps_hint`** is NOT a field on `ClawOutput`. It is a **SO-skill-level convention**: when a node wants to recommend a tactical path, it does so via its `orchestrator_summary` (e.g., "CMC validation is likely next") or through the Architect's skill instructions. This preserves the decoupling between bags — a Regulatory specialist doesn't need to know the internal structure of the CMC bag.
 
 ## 🛰️ Lifecycle in the Workspace
 - **Registration**: Architect calls `register_node` with the logic and metadata.

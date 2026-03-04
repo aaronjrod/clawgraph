@@ -70,9 +70,15 @@ def check_stability_alignment(coa_data: dict) -> ClawOutput:
     # Logic: Align manufacturer data with current FDA impurity standards
     # If FDA standard (0.1) < Manufacturing result (0.3):
     return ClawOutput(
-        signal=NEED_INTERVENTION,
-        summary="Manufacturing impurity (0.3) exceeds new FDA standard (0.1).",
-        error_detail={"issue": "CMC section requires protocol update."},
+        signal=Signal.NEED_INTERVENTION,
+        node_id="cmc_stability_checker",
+        orchestrator_summary="Manufacturing impurity (0.3) exceeds new FDA standard (0.1).",
+        error_detail=ErrorDetail(
+            failure_class=FailureClass.SCHEMA_MISMATCH,
+            message="CMC section requires protocol update.",
+            expected="Impurity ≤ 0.1 (FDA standard)",
+            actual="Impurity = 0.3 (Batch 99)"
+        ),
         result_uri="s3://cto-archive/stability/batch_99_fail.pdf"
     )
 ```

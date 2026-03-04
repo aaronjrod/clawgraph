@@ -178,7 +178,7 @@ Future iterations of ClawGraph will support execution within **Trusted Execution
 ## 8. Implementation Considerations
 - **Dynamic Compilation**: Use the `ServerRuntime` or a custom factory pattern to rebuild the `StateGraph` when a `ClawBag` is modified.
     - **Lazy Compilation**: The BagManager must only re-compile the graph if the manifest version has changed since the last execution to prevent "thought lag."
-- **Pydantic Schemas**: Force all `ClawNode` outputs to inherit from a base `ClawOutput` containing `signal: str` and `summary: str`.
+- **Pydantic Schemas**: Force all `ClawNode` outputs to inherit from `ClawOutput` (see [12_clawoutput_spec.md](file:///Users/aaronrodrigues/projects/clawgraph/notes/12_clawoutput_spec.md) for canonical model).
 - **Checkpointing & Storage**: 
     - Utilize LangGraph's native checkpointers (e.g., `SqliteSaver`, `PostgresSaver`) for durable state.
     - **SQLite** is the recommended default for localized/development environments.
