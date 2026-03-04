@@ -46,7 +46,11 @@ venv.bak/
 *.swo
 
 # Project specific
-.clawd/
+.claw/
 sessions/
 document_archive/
 logs/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.cache/

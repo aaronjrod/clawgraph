@@ -13,13 +13,16 @@ from clawgraph.core.models import (
     Signal,
 )
 from clawgraph.core.signals import SignalManager
+from clawgraph.orchestrator.graph import BagState, ClawBag
 
 __all__ = [
     "AggregatorOutput",
     "BagManager",
     "BagManifest",
+    "BagState",
     "BranchResult",
     # Bag
+    "ClawBag",
     "ClawNodeMetadata",
     "ClawOutput",
     "ErrorDetail",
