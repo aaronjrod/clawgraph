@@ -174,6 +174,20 @@ class TestClawOutputValidators:
                 node_id="n",
                 orchestrator_summary="Partial.",
                 # Missing result_uri
+                error_detail=ErrorDetail(
+                    failure_class=FailureClass.LOGIC_ERROR,
+                    message="foo"
+                )
+            )
+
+    def test_partial_requires_error_detail(self):
+        with pytest.raises(ValidationError, match="PARTIAL signal requires error_detail"):
+            ClawOutput(
+                signal=Signal.PARTIAL,
+                node_id="n",
+                orchestrator_summary="Partial.",
+                result_uri="uri://partial",
+                # Missing error_detail
             )
 
     def test_need_info_requires_info_request(self):

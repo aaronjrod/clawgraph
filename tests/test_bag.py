@@ -211,3 +211,81 @@ class TestInventory:
         assert bag._inventory_queried is False
         bag.get_inventory()
         assert bag._inventory_queried is True
+
+
+# ── Audit Node ─────────────────────────────────────────────────────────────────
+
+
+class TestAuditNode:
+    def test_audit_returns_source_and_metadata(self):
+        bag = BagManager(name="test")
+        bag.register_node(sample_node)
+        audit = bag.audit_node("summarize_doc")
+        assert audit["node_id"] == "summarize_doc"
+        assert audit["metadata"]["id"] == "summarize_doc"
+        assert audit["source"] is not None
+        assert "def sample_node" in audit["source"]
+
+    def test_audit_unknown_node_raises(self):
+        bag = BagManager(name="test")
+        with pytest.raises(KeyError, match="not found"):
+            bag.audit_node("ghost")
+
+    def test_audit_returns_audit_policy(self):
+        bag = BagManager(name="test")
+        meta = ClawNodeMetadata(
+            id="audited",
+            description="Has policy.",
+            bag="test",
+            audit_policy={"always": True},
+        )
+        bag.register_node(bare_function, metadata=meta)
+        audit = bag.audit_node("audited")
+        assert audit["audit_policy"] == {"always": True}
+
+    def test_audit_no_policy_returns_none(self):
+        bag = BagManager(name="test")
+        bag.register_node(sample_node)
+        audit = bag.audit_node("summarize_doc")
+        assert audit["audit_policy"] is None
+
+
+# ── Rollback ───────────────────────────────────────────────────────────────────
+
+
+class TestRollback:
+    def test_rollback_to_earlier_version(self):
+        bag = BagManager(name="test")
+        bag.register_node(sample_node)  # v1: has summarize_doc
+        bag.register_node(verify_node)  # v2: has both
+        assert len(bag) == 2
+        assert bag.version == 2
+
+        bag.rollback_bag(version=1)
+        assert bag.version == 1
+        assert "summarize_doc" in bag
+        assert "verify_output" not in bag
+
+    def test_rollback_preserves_history(self):
+        bag = BagManager(name="test")
+        bag.register_node(sample_node)  # v1
+        bag.register_node(verify_node)  # v2
+        assert len(bag._manifest_history) == 2
+
+        bag.rollback_bag(version=1)
+        # History should still contain snapshots.
+        assert len(bag._manifest_history) >= 2
+
+    def test_rollback_unknown_version_raises(self):
+        bag = BagManager(name="test")
+        bag.register_node(sample_node)
+        with pytest.raises(ValueError, match="not found in history"):
+            bag.rollback_bag(version=99)
+
+    def test_rollback_locked_raises(self):
+        bag = BagManager(name="test")
+        bag.register_node(sample_node)
+        bag.lock()
+        with pytest.raises(ManifestLockedError):
+            bag.rollback_bag(version=0)
+

@@ -24,7 +24,7 @@ def _make_output(
     # Provide signal-required fields.
     if signal in (Signal.DONE, Signal.PARTIAL):
         defaults["result_uri"] = kwargs.pop("result_uri", "uri://test")
-    if signal in (Signal.FAILED, Signal.NEED_INTERVENTION):
+    if signal in (Signal.FAILED, Signal.PARTIAL, Signal.NEED_INTERVENTION):
         defaults["error_detail"] = kwargs.pop(
             "error_detail",
             ErrorDetail(failure_class=FailureClass.LOGIC_ERROR, message="test error"),
@@ -119,17 +119,23 @@ class TestSignalManagerHUD:
     def test_hud_snapshot_empty(self):
         sm = SignalManager()
         snapshot = sm.get_hud_snapshot()
-        assert snapshot == {}
+        assert snapshot["thread_id"] == ""
+        assert snapshot["nodes"] == []
+        assert snapshot["links"] == []
 
     def test_hud_snapshot_after_signals(self):
         sm = SignalManager()
         sm.process_signal(_make_output(Signal.DONE, "node_a"))
         sm.process_signal(_make_output(Signal.FAILED, "node_b"))
-        snapshot = sm.get_hud_snapshot()
-        assert "node_a" in snapshot
-        assert "node_b" in snapshot
-        assert snapshot["node_a"]["status"] == "DONE"
-        assert snapshot["node_b"]["status"] == "FAILED"
+        snapshot = sm.get_hud_snapshot(thread_id="test_thread")
+        assert snapshot["thread_id"] == "test_thread"
+        assert len(snapshot["nodes"]) == 2
+        nodes_by_id = {n["id"]: n for n in snapshot["nodes"]}
+        assert nodes_by_id["node_a"]["status"] == "DONE"
+        assert nodes_by_id["node_b"]["status"] == "FAILED"
+        # Topology links for each node.
+        topo_links = [lnk for lnk in snapshot["links"] if lnk["type"] == "topology"]
+        assert len(topo_links) == 2
 
     def test_mark_running(self):
         sm = SignalManager()
@@ -152,7 +158,9 @@ class TestSignalManagerReset:
 
         sm.reset()
         assert sm.node_count == 0
-        assert sm.get_hud_snapshot() == {}
+        snapshot = sm.get_hud_snapshot()
+        assert snapshot["nodes"] == []
+        assert snapshot["links"] == []
 
     def test_reset_allows_reprocessing_same_output_id(self):
         sm = SignalManager()
@@ -161,3 +169,47 @@ class TestSignalManagerReset:
         sm.reset()
         # After reset, same output_id should be accepted again.
         assert sm.process_signal(output) is True
+
+
+class TestSignalManagerTimeline:
+    def test_process_signal_emits_timeline_event(self):
+        from clawgraph.core.timeline import TimelineBuffer
+        buf = TimelineBuffer()
+        sm = SignalManager(timeline_buffer=buf)
+        sm.set_active_thread("thread_1")
+        output = _make_output(Signal.DONE, "node_a")
+        sm.process_signal(output)
+
+        events = buf.get_timeline("thread_1")
+        assert len(events) == 1
+        assert events[0].node_id == "node_a"
+        assert events[0].signal == Signal.DONE
+
+    def test_mark_running_emits_timeline_event(self):
+        from clawgraph.core.timeline import TimelineBuffer
+        buf = TimelineBuffer()
+        sm = SignalManager(timeline_buffer=buf)
+        sm.set_active_thread("thread_1")
+        sm.mark_running("node_x")
+
+        events = buf.get_timeline("thread_1")
+        assert len(events) == 1
+        assert events[0].metadata["orchestrator_status"] == "RUNNING"
+
+    def test_no_timeline_no_error(self):
+        """Without a TimelineBuffer, process_signal should not fail."""
+        sm = SignalManager()
+        sm.set_active_thread("thread_1")
+        output = _make_output(Signal.DONE, "node_a")
+        assert sm.process_signal(output) is True
+
+    def test_no_thread_id_no_emit(self):
+        """Without set_active_thread, no timeline events emitted."""
+        from clawgraph.core.timeline import TimelineBuffer
+        buf = TimelineBuffer()
+        sm = SignalManager(timeline_buffer=buf)
+        # Don't call set_active_thread
+        output = _make_output(Signal.DONE, "node_a")
+        sm.process_signal(output)
+        # No events emitted because no thread_id set.
+        assert buf.event_count("") == 0

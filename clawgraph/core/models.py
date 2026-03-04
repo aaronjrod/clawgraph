@@ -135,11 +135,14 @@ class ClawOutput(BaseModel):
         if self.signal == Signal.FAILED and self.error_detail is None:
             raise ValueError("FAILED signal requires error_detail.")
 
-        if self.signal == Signal.PARTIAL and self.result_uri is None:
-            raise ValueError(
-                "PARTIAL signal requires result_uri "
-                "(partial artifacts must be committed)."
-            )
+        if self.signal == Signal.PARTIAL:
+            if self.result_uri is None:
+                raise ValueError(
+                    "PARTIAL signal requires result_uri "
+                    "(partial artifacts must be committed)."
+                )
+            if self.error_detail is None:
+                raise ValueError("PARTIAL signal requires error_detail.")
 
         if self.signal == Signal.DONE and self.result_uri is None:
             raise ValueError(
