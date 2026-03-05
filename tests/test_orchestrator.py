@@ -134,9 +134,11 @@ class TestRouteSignal:
 
     def test_need_info_routes_to_escalate(self):
         state: BagState = {  # type: ignore[typeddict-item]
-            "current_output": {"signal": Signal.NEED_INFO},
+            "current_output": {"signal": Signal.NEED_INFO, "node_id": "info_node"},
             "iteration_count": 1,
             "max_iterations": 10,
+            # Retries exhausted → should escalate.
+            "need_info_tracking": {"info_node": {"retries": 3, "max_retries": 3}},
         }
         assert route_signal(state) == ROUTE_ESCALATE
 
@@ -161,6 +163,7 @@ class TestRouteSignal:
             "current_output": {},
             "iteration_count": 0,
             "max_iterations": 10,
+            "ready_queue": ["some_node"],  # Must have nodes to dispatch.
         }
         assert route_signal(state) == ROUTE_NEXT_NODE
 
@@ -366,7 +369,7 @@ class TestClawBagExecution:
 
         # 4. Both nodes must have committed results to the archive
         archive = result.get("document_archive", {})
-        
+
         # Verify the archive key convention before testing consumer resolution.
         # If this fails, the requires= key on consumer_node is wrong, not the stall logic.
         assert "producer_node_result" in archive, (
@@ -374,7 +377,7 @@ class TestClawBagExecution:
             "'producer_node_result'. If missing, check how result_uri maps to "
             "archive keys — the consumer's requires= field must match exactly."
         )
-        
+
         assert "consumer_node_result" in archive, (
             "Consumer node was not executed after prerequisite was resolved"
         )
@@ -392,18 +395,28 @@ class TestClawBagExecution:
 class TestGap2HITLContextInjection:
     def test_suspend_node_injects_timeline(self):
         """Gap 2 (F-REQ-32): suspend node should inject timeline events into human_request."""
+        from clawgraph.core.models import ClawOutput, Signal
+        from clawgraph.core.timeline import TimelineBuffer
         from clawgraph.orchestrator.hub import _make_suspend_node
-        from clawgraph.core.timeline import TimelineBuffer, TimelineEvent
-        
+
         delivered = []
         def handler(tid: str, req: dict) -> None:
             delivered.append(req)
-            
-        # The suspend node needs access to the SignalManager or TimelineBuffer
-        # Currently _make_suspend_node only takes hitl_handler. This test expects the refactor.
-        # For now, we simulate the state that SHOULD be passed to the handler.
-        suspend = _make_suspend_node(hitl_handler=handler)
-        
+
+        # Create a TimelineBuffer with some events for context.
+        timeline = TimelineBuffer()
+        timeline.record_signal(
+            thread_id="test_thread",
+            output=ClawOutput(
+                signal=Signal.DONE,
+                node_id="prev_node",
+                orchestrator_summary="Preceding work completed.",
+                result_uri="uri://prev",
+            ),
+        )
+
+        suspend = _make_suspend_node(hitl_handler=handler, timeline_buffer=timeline)
+
         state: BagState = {
             "current_output": {
                 "signal": Signal.HOLD_FOR_HUMAN,
@@ -412,10 +425,11 @@ class TestGap2HITLContextInjection:
             "thread_id": "test_thread"
         }
         suspend(state)
-        
+
         assert len(delivered) == 1
         # The handler should receive a payload augmented with context.
         assert "timeline_context" in delivered[0]
+        assert len(delivered[0]["timeline_context"]) >= 1
 
 
 class TestGap3EscalationPolicyEnforcement:
@@ -436,9 +450,9 @@ class TestGap4PartialCommitPolicy:
     def test_eager_partial_commit_registers_successes(self):
         """Gap 4 (F-REQ-13): partial_commit_policy='eager' should commit successful branches immediately."""
         from clawgraph.core.models import AggregatorOutput, BranchResult, ErrorDetail, FailureClass
-        
+
         bag = ClawBag(name="test_bag")
-        
+
         @clawnode(id="agg_node", description="Aggregates", bag="test")
         def agg_node(state: dict) -> ClawOutput:
             return AggregatorOutput(
@@ -452,10 +466,10 @@ class TestGap4PartialCommitPolicy:
                     BranchResult(branch_id="b1", node_id="w1", signal=Signal.DONE, summary="OK", result_uri="uri://b1.json")
                 ]
             )
-            
+
         bag.manager.register_node(agg_node)
         result = bag.start_job(objective="Test eager commit")
-        
+
         archive = result.get("document_archive", {})
         # Because policy is eager, intermediate DONE branches MUST be committed.
         assert "b1_result" in archive, "Eager policy violated: branch result was not committed despite DONE signal."
@@ -463,9 +477,9 @@ class TestGap4PartialCommitPolicy:
     def test_atomic_partial_commit_delays_artifact_registration(self):
         """Gap 4 (F-REQ-13): partial_commit_policy='atomic' should delay commit until aggregator completes."""
         from clawgraph.core.models import AggregatorOutput, BranchResult, ErrorDetail, FailureClass
-        
+
         bag = ClawBag(name="test_bag")
-        
+
         @clawnode(id="agg_node", description="Aggregates", bag="test")
         def agg_node(state: dict) -> ClawOutput:
             return AggregatorOutput(
@@ -479,10 +493,10 @@ class TestGap4PartialCommitPolicy:
                     BranchResult(branch_id="b1", node_id="w1", signal=Signal.DONE, summary="OK", result_uri="uri://b1.json")
                 ]
             )
-            
+
         bag.manager.register_node(agg_node)
         result = bag.start_job(objective="Test atomic commit")
-        
+
         archive = result.get("document_archive", {})
         # Because policy is atomic, intermediate DONE branches should NOT be committed in the event of a PARTIAL signal.
         assert "b1_result" not in archive, "Atomic policy violated: branch result committed despite PARTIAL signal."
@@ -492,17 +506,17 @@ class TestGap5MultiDomainTagVisibility:
     def test_prerequisite_checker_respects_domain_tags(self):
         """Gap 5 (F-REQ-17): Prerequisite resolution should respect multi-bag tagging in document_archive."""
         from clawgraph.orchestrator.hub import _make_dispatch_node
-        
+
         bag = ClawBag(name="test_bag")
-        
+
         @clawnode(id="consumer_node", description="Consumes", bag="test", requires=["secure_doc"])
         def consumer_node(state: dict) -> ClawOutput:
             return ClawOutput(signal=Signal.DONE, node_id="consumer_node", orchestrator_summary="OK", result_uri="uri://ok")
-            
+
         bag.manager.register_node(consumer_node)
-        
+
         dispatch = _make_dispatch_node(bag_manager=bag.manager, signal_manager=bag.signal_manager)
-        
+
         # State with a document from another domain, not tagged public for this bag.
         state: BagState = {
             "current_node_id": "consumer_node",
@@ -515,10 +529,10 @@ class TestGap5MultiDomainTagVisibility:
             },
             "bag_manifest": bag.manager.manifest.model_dump()
         }
-        
+
         updates = dispatch(state)
         output = updates.get("current_output", {})
-        
+
         # It should stall/fail because it cannot see the document.
         # F-REQ-17: Prerequisite resolution MUST fail (or stall)
         assert output.get("signal") != Signal.DONE, (

@@ -44,15 +44,24 @@ class BagState(TypedDict, total=False):
     document_archive: dict[str, str]  # {artifact_id: uri} — pointer registry.
     phase_history: list[str]  # Sequential accomplishment summaries.
 
-    # ── Execution ──────────────────────────────────────────────────
+    # ── Execution Queues (Gap 6 / F-REQ-12) ───────────────────────
     current_output: dict[str, Any]  # Serialized ClawOutput from last node.
     current_node_id: str | None  # Node being dispatched (or None if idle).
     max_iterations: int  # Budget for Orchestrator reasoning loops.
     iteration_count: int  # How many dispatches have occurred.
+    ready_queue: list[str]  # Nodes whose prereqs are satisfied.
+    stalled_queue: list[str]  # Nodes waiting on prerequisites.
+    completed_nodes: list[str]  # Nodes that have finished (DONE).
 
     # ── Orchestrator ───────────────────────────────────────────────
     orchestrator_prompt: str  # The assembled system prompt.
     pending_escalation: dict[str, Any] | None  # Escalation payload for SO.
+
+    # ── Escalation Policy Tracking (Gap 3 / F-REQ-10) ─────────────
+    need_info_tracking: dict[str, Any]  # {node_id: {retries, first_seen}}
+
+    # ── Timeline Events (in-state log for observability) ──────────
+    timeline: list[dict[str, Any]]  # Serialized event dicts.
 
     # ── HITL ───────────────────────────────────────────────────────
     human_response: str | None  # Injected by resume_job().
@@ -168,6 +177,7 @@ class ClawBag:
             bag_manager=self._manager,
             signal_manager=self._signal_manager,
             hitl_handler=self._hitl_handler,
+            timeline_buffer=self._signal_manager._timeline,
         )
 
         self._compiled_graph = graph
@@ -240,21 +250,46 @@ class ClawBag:
         iterations = max_iterations or self._max_iterations
 
         # Build initial state.
+        archive = inputs or {}
+        inventory = self._manager.get_inventory()
+
+        # Partition nodes into ready vs stalled based on prereqs.
+        ready: list[str] = []
+        stalled: list[str] = []
+        initial_timeline: list[dict[str, Any]] = []
+        for nid, meta in inventory.get("nodes", {}).items():
+            requires = meta.get("requires") or []
+            missing = [r for r in requires if r not in archive]
+            if missing:
+                stalled.append(nid)
+                initial_timeline.append({
+                    "node_id": nid,
+                    "signal": "STALLED",
+                    "summary": f"Missing: {missing}",
+                })
+            else:
+                ready.append(nid)
+
         state: BagState = {
             "objective": objective,
             "thread_id": thread_id or f"{self._name}_{datetime.now().isoformat()}",
-            "bag_manifest": self._manager.get_inventory(),
-            "document_archive": inputs or {},
+            "bag_manifest": inventory,
+            "document_archive": archive,
             "phase_history": [],
             "current_output": {},
             "current_node_id": None,
             "max_iterations": iterations,
             "iteration_count": 0,
+            "ready_queue": ready,
+            "stalled_queue": stalled,
+            "completed_nodes": [],
             "orchestrator_prompt": build_orchestrator_prompt(
                 bag_name=self._name,
                 max_iterations=iterations,
             ),
             "pending_escalation": None,
+            "need_info_tracking": {},
+            "timeline": initial_timeline,
             "human_response": None,
             "suspended": False,
         }
@@ -328,11 +363,16 @@ class ClawBag:
                 "current_node_id": None,
                 "max_iterations": self._max_iterations,
                 "iteration_count": 0,
+                "ready_queue": [],
+                "stalled_queue": [],
+                "completed_nodes": [],
                 "orchestrator_prompt": build_orchestrator_prompt(
                     bag_name=self._name,
                     max_iterations=self._max_iterations,
                 ),
                 "pending_escalation": None,
+                "need_info_tracking": {},
+                "timeline": [],
                 "human_response": human_response,
                 "suspended": False,
             }

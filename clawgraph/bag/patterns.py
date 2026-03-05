@@ -4,7 +4,7 @@ These are helper classes and utilities that implement common node archetypes
 from 06_patterns.md (Parts 3, 8). They compose with the @clawnode decorator
 rather than replacing it.
 
-Spec ref: 06_patterns.md §3.2–3.4, §8.1–8.3
+Spec ref: 06_patterns.md S3.2-3.4, S8.1-8.3
 """
 
 from __future__ import annotations
@@ -163,7 +163,6 @@ class VerificationNode:
         """Run all checks and return DONE or FAILED with structured detail."""
         failures = [c for c in checks if not c.passed]
         total = len(checks)
-        passed = total - len(failures)
 
         if not failures:
             return ClawOutput(

@@ -4,7 +4,7 @@ The Super-Orchestrator is the highest-level agent. It designs bags, registers
 nodes, audits results, and repairs broken state. Its behavior is defined by
 the rules in 06_patterns.md Part 4.
 
-Architecture ref: 05_ARCHITECTURE.md §1.1, 06_patterns.md §4.1–4.8
+Architecture ref: 05_ARCHITECTURE.md §1.1, 06_patterns.md §4.1-4.8
 """
 
 from __future__ import annotations

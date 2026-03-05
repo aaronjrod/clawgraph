@@ -3,14 +3,15 @@
 The Orchestrator node sits at the center of the hub-and-spoke topology.
 It receives signals from nodes, decides what happens next, and dispatches
 the next node. It also handles exception interception, prerequisite
-checking, and iteration governance.
+checking, iteration governance, and the RESOLVING re-evaluation loop.
 
-Architecture ref: 05_ARCHITECTURE.md §4, §6
+Architecture ref: 05_ARCHITECTURE.md §4, §6, §10.2
 """
 
 from __future__ import annotations
 
 import logging
+import time
 import traceback
 from collections.abc import Callable
 from typing import Any
@@ -19,12 +20,14 @@ from langgraph.graph import END, StateGraph
 
 from clawgraph.bag.manager import BagManager
 from clawgraph.core.models import (
+    AggregatorOutput,
     ClawOutput,
     ErrorDetail,
     FailureClass,
     Signal,
 )
 from clawgraph.core.signals import SignalManager
+from clawgraph.core.timeline import TimelineBuffer
 from clawgraph.orchestrator.graph import BagState
 
 logger = logging.getLogger(__name__)
@@ -46,6 +49,9 @@ def route_signal(state: BagState) -> str:
     This is the Orchestrator's decision function — it reads current_output
     and decides the next graph transition.
 
+    Gap 6 fix: DONE no longer unconditionally completes. It checks the
+    ready_queue and loops back to dispatch if more nodes are available.
+
     Returns:
         One of ROUTE_NEXT_NODE, ROUTE_ESCALATE, ROUTE_SUSPEND, ROUTE_COMPLETE.
     """
@@ -53,6 +59,7 @@ def route_signal(state: BagState) -> str:
     signal = output.get("signal")
     iteration_count = state.get("iteration_count", 0)
     max_iterations = state.get("max_iterations", 10)
+    ready_queue = state.get("ready_queue", [])
 
     # Budget exhaustion check.
     if iteration_count >= max_iterations:
@@ -65,16 +72,33 @@ def route_signal(state: BagState) -> str:
 
     # Signal-based routing.
     if signal == Signal.DONE:
-        # Check if there are more nodes to dispatch or if we're done.
-        # For now, DONE from any node completes the job.
-        # Phase 3+ will add multi-step planning here.
+        # Gap 6 fix: only complete if ready_queue is empty.
+        if ready_queue:
+            return ROUTE_NEXT_NODE
         return ROUTE_COMPLETE
 
     if signal in (Signal.FAILED, Signal.NEED_INTERVENTION):
         return ROUTE_ESCALATE
 
     if signal == Signal.NEED_INFO:
-        return ROUTE_ESCALATE  # Surface to SO for clarification.
+        # Gap 3 (F-REQ-10): Check escalation policy before escalating.
+        node_id = output.get("node_id", "")
+        tracking = state.get("need_info_tracking", {})
+        node_tracking = tracking.get(node_id, {})
+        retries = node_tracking.get("retries", 0)
+        max_retries = node_tracking.get("max_retries", 3)
+
+        if retries < max_retries:
+            # Within retry budget — re-dispatch (node stays in queue).
+            return ROUTE_NEXT_NODE
+        # Budget exhausted — escalate.
+        logger.warning(
+            "NEED_INFO retries exhausted for '%s' (%d/%d). Promoting to NEED_INTERVENTION.",
+            node_id,
+            retries,
+            max_retries,
+        )
+        return ROUTE_ESCALATE
 
     if signal == Signal.HOLD_FOR_HUMAN:
         return ROUTE_SUSPEND
@@ -84,7 +108,10 @@ def route_signal(state: BagState) -> str:
 
     # No signal yet (first iteration) — dispatch a node.
     if signal is None:
-        return ROUTE_NEXT_NODE
+        if ready_queue:
+            return ROUTE_NEXT_NODE
+        # Nothing to dispatch and nothing done yet.
+        return ROUTE_COMPLETE
 
     # Unknown signal — escalate defensively.
     logger.warning("Unknown signal '%s'. Escalating.", signal)
@@ -100,38 +127,36 @@ def _make_dispatch_node(
 ) -> Callable[[BagState], BagState]:
     """Create the dispatch_node function for the StateGraph.
 
-    This node:
-    1. Selects the next node to run (currently: first available).
-    2. Checks prerequisites.
-    3. Executes the node with exception interception.
-    4. Processes the signal through the SignalManager.
+    Gap 6 fix: Pops from ready_queue instead of using current_node_id.
+    Gap 1 fix: After DONE, re-evaluates stalled_queue (RESOLVING loop).
+    Gap 4 fix: Respects partial_commit_policy on archive writes.
     """
 
     def dispatch_node(state: BagState) -> BagState:
-        """Execute the next node and process its output."""
+        """Execute the next node from ready_queue and process its output."""
         updates: dict[str, Any] = {}
 
-        # ── Select next node ──────────────────────────────────────
-        node_id = state.get("current_node_id")
-        if node_id is None:
-            # First dispatch — pick the first node in manifest.
-            # Phase 3+ will replace this with LLM-based planning.
-            manifest = state.get("bag_manifest", {})
-            nodes = manifest.get("nodes", {})
-            if not nodes:
-                logger.warning("No nodes in manifest. Escalating.")
-                updates["current_output"] = _synthesize_error(
-                    node_id="__orchestrator__",
-                    message="No nodes registered in the bag.",
-                    failure_class=FailureClass.LOGIC_ERROR,
-                )
-                updates["pending_escalation"] = updates["current_output"]
-                return updates  # type: ignore[return-value]
-            node_id = next(iter(nodes))
+        # ── Pop next node from ready_queue ─────────────────────────
+        ready_queue = list(state.get("ready_queue", []))
+        stalled_queue = list(state.get("stalled_queue", []))
+        completed_nodes = list(state.get("completed_nodes", []))
 
+        if not ready_queue:
+            # Nothing to dispatch — should have been caught by route_signal.
+            logger.warning("dispatch_node called with empty ready_queue.")
+            updates["current_output"] = _synthesize_error(
+                node_id="__orchestrator__",
+                message="No nodes in ready_queue.",
+                failure_class=FailureClass.LOGIC_ERROR,
+            )
+            updates["pending_escalation"] = updates["current_output"]
+            return updates  # type: ignore[return-value]
+
+        node_id = ready_queue.pop(0)
         updates["current_node_id"] = node_id
+        updates["ready_queue"] = ready_queue
 
-        # ── Check prerequisites ───────────────────────────────────
+        # ── Check prerequisites (should be satisfied, but verify) ──
         try:
             node_meta = bag_manager.manifest.nodes.get(node_id)
         except Exception:
@@ -141,26 +166,56 @@ def _make_dispatch_node(
             archive = state.get("document_archive", {})
             missing = [r for r in node_meta.requires if r not in archive]
             if missing:
+                # Gap 1 fix: Move to stalled_queue, NOT NEED_INTERVENTION.
                 signal_manager.mark_stalled(node_id)
                 logger.info(
                     "Node '%s' STALLED: missing prerequisites %s.",
                     node_id,
                     missing,
                 )
-                updates["current_output"] = {
-                    "signal": Signal.NEED_INTERVENTION,
+                stalled_queue.append(node_id)
+                updates["stalled_queue"] = stalled_queue
+
+                # Emit STALLED event to in-state timeline.
+                timeline = list(state.get("timeline", []))
+                timeline.append({
                     "node_id": node_id,
-                    "orchestrator_summary": (
-                        f"Node '{node_id}' is STALLED. "
-                        f"Missing prerequisites: {missing}"
-                    ),
-                    "error_detail": {
-                        "failure_class": FailureClass.LOGIC_ERROR,
-                        "message": f"Unmet prerequisites: {missing}",
-                    },
-                    "orchestrator_synthesized": True,
-                }
-                updates["pending_escalation"] = updates["current_output"]
+                    "signal": "STALLED",
+                    "summary": f"Missing: {missing}",
+                })
+                updates["timeline"] = timeline
+
+                # Synthesize a status event for the timeline, but don't
+                # terminate the job. Continue to the next ready node.
+                if ready_queue:
+                    # There are other nodes to try — recurse by setting
+                    # current_output to None so route_signal dispatches again.
+                    updates["current_output"] = {
+                        "signal": None,
+                        "node_id": node_id,
+                        "orchestrator_summary": (
+                            f"Node '{node_id}' stalled on {missing}. "
+                            f"Trying next ready node."
+                        ),
+                    }
+                else:
+                    # No more ready nodes and this one is stalled.
+                    # Check if any stalled node is a dead-end (producer FAILED).
+                    updates["current_output"] = {
+                        "signal": Signal.NEED_INTERVENTION,
+                        "node_id": node_id,
+                        "orchestrator_summary": (
+                            f"Node '{node_id}' is STALLED. "
+                            f"Missing prerequisites: {missing}. "
+                            f"No ready nodes remain."
+                        ),
+                        "error_detail": {
+                            "failure_class": FailureClass.LOGIC_ERROR,
+                            "message": f"Unmet prerequisites: {missing}",
+                        },
+                        "orchestrator_synthesized": True,
+                    }
+                    updates["pending_escalation"] = updates["current_output"]
                 return updates  # type: ignore[return-value]
 
         # ── Execute node (with exception interception) ────────────
@@ -176,26 +231,80 @@ def _make_dispatch_node(
             updates["current_output"] = result.model_dump()
             updates["iteration_count"] = state.get("iteration_count", 0) + 1
 
-            # On DONE, append to phase_history.
+            # On DONE, run the RESOLVING loop (Gap 1 / F-REQ-34).
             if result.signal == Signal.DONE:
                 history = list(state.get("phase_history", []))
                 history.append(result.orchestrator_summary)
                 updates["phase_history"] = history
 
                 # Store result in document_archive if result_uri exists.
+                archive = dict(state.get("document_archive", {}))
                 if result.result_uri:
-                    archive = dict(state.get("document_archive", {}))
                     archive[f"{node_id}_result"] = result.result_uri
                     updates["document_archive"] = archive
 
-            # On escalation signals, set pending_escalation.
-            if result.signal in (
+                # Mark node as completed.
+                completed_nodes.append(node_id)
+                updates["completed_nodes"] = completed_nodes
+
+                # ── RESOLVING: re-evaluate stalled_queue ──────────
+                newly_ready, still_stalled = _resolve_stalled(
+                    stalled_queue, archive, bag_manager,
+                )
+                if newly_ready:
+                    ready_queue = list(updates.get("ready_queue", ready_queue))
+                    ready_queue.extend(newly_ready)
+                    updates["ready_queue"] = ready_queue
+                    logger.info(
+                        "RESOLVING: %d node(s) moved from stalled to ready: %s",
+                        len(newly_ready),
+                        newly_ready,
+                    )
+
+                    # Emit RESOLVING event to in-state timeline.
+                    timeline = list(state.get("timeline", []))
+                    timeline = list(updates.get("timeline", timeline))
+                    timeline.append({
+                        "node_id": node_id,
+                        "signal": "RESOLVING",
+                        "summary": f"Unblocked: {newly_ready}",
+                    })
+                    updates["timeline"] = timeline
+
+                updates["stalled_queue"] = still_stalled
+
+            # Gap 4: Handle PARTIAL w/ partial_commit_policy.
+            if result.signal == Signal.PARTIAL and isinstance(result, AggregatorOutput):
+                archive = dict(state.get("document_archive", {}))
+                archive = dict(updates.get("document_archive", archive))
+                if result.partial_commit_policy == "eager":
+                    # Commit successful branch results immediately.
+                    for br in result.branch_breakdown or []:
+                        if br.signal == Signal.DONE and br.result_uri:
+                            archive[f"{br.branch_id}_result"] = br.result_uri
+                    updates["document_archive"] = archive
+                # "atomic" → don't commit branch results on PARTIAL.
+                updates["pending_escalation"] = result.model_dump()
+
+            # On other escalation signals, set pending_escalation.
+            elif result.signal in (
                 Signal.FAILED,
                 Signal.NEED_INFO,
                 Signal.NEED_INTERVENTION,
-                Signal.PARTIAL,
             ):
                 updates["pending_escalation"] = result.model_dump()
+
+                # Gap 3: Track NEED_INFO retries.
+                if result.signal == Signal.NEED_INFO:
+                    tracking = dict(state.get("need_info_tracking", {}))
+                    node_track = dict(tracking.get(node_id, {
+                        "retries": 0,
+                        "first_seen": time.time(),
+                        "max_retries": 3,
+                    }))
+                    node_track["retries"] = node_track.get("retries", 0) + 1
+                    tracking[node_id] = node_track
+                    updates["need_info_tracking"] = tracking
 
             # On HOLD_FOR_HUMAN, mark as suspended.
             if result.signal == Signal.HOLD_FOR_HUMAN:
@@ -234,6 +343,38 @@ def _make_dispatch_node(
     return dispatch_node
 
 
+def _resolve_stalled(
+    stalled_queue: list[str],
+    archive: dict[str, str],
+    bag_manager: BagManager,
+) -> tuple[list[str], list[str]]:
+    """Re-evaluate stalled nodes against the current document_archive.
+
+    Returns (newly_ready, still_stalled).
+    This is the RESOLVING step from F-REQ-34 / Architecture §10.2.
+    """
+    newly_ready: list[str] = []
+    still_stalled: list[str] = []
+
+    for node_id in stalled_queue:
+        try:
+            meta = bag_manager.manifest.nodes.get(node_id)
+        except Exception:
+            meta = None
+
+        if meta and meta.requires:
+            missing = [r for r in meta.requires if r not in archive]
+            if missing:
+                still_stalled.append(node_id)
+            else:
+                newly_ready.append(node_id)
+        else:
+            # No prerequisites — should be ready.
+            newly_ready.append(node_id)
+
+    return newly_ready, still_stalled
+
+
 def _make_escalate_node() -> Callable[[BagState], BagState]:
     """Create the escalation node for SO-bound signal routing."""
 
@@ -263,8 +404,12 @@ def _make_escalate_node() -> Callable[[BagState], BagState]:
 
 def _make_suspend_node(
     hitl_handler: Callable[..., Any] | None,
+    timeline_buffer: TimelineBuffer | None = None,
 ) -> Callable[[BagState], BagState]:
-    """Create the suspension node for HOLD_FOR_HUMAN signals."""
+    """Create the suspension node for HOLD_FOR_HUMAN signals.
+
+    Gap 2 fix: Injects timeline context into the handler payload.
+    """
 
     def suspend(state: BagState) -> BagState:
         """Checkpoint and deliver the human request via the HITL handler.
@@ -274,7 +419,20 @@ def _make_suspend_node(
         """
         output = state.get("current_output", {})
         thread_id = state.get("thread_id", "unknown")
-        human_request = output.get("human_request", {})
+        human_request = dict(output.get("human_request", {}))
+
+        # Gap 2 fix (F-REQ-32): Inject timeline context.
+        if timeline_buffer is not None:
+            context = timeline_buffer.get_hitl_context(thread_id)
+            human_request["timeline_context"] = [
+                {
+                    "node_id": e.node_id,
+                    "signal": e.signal.value if e.signal else None,
+                    "summary": e.summary,
+                    "ts": e.timestamp.isoformat() if e.timestamp else None,
+                }
+                for e in context
+            ]
 
         logger.info(
             "Suspending job '%s' for human input: %s",
@@ -321,6 +479,7 @@ def build_hub_graph(
     bag_manager: BagManager,
     signal_manager: SignalManager,
     hitl_handler: Callable[..., Any] | None = None,
+    timeline_buffer: TimelineBuffer | None = None,
 ) -> Any:
     """Build the hub-and-spoke StateGraph for a ClawBag.
 
@@ -335,6 +494,7 @@ def build_hub_graph(
         bag_manager: The BagManager with registered nodes.
         signal_manager: The SignalManager for telemetry.
         hitl_handler: Optional HITL delivery callback.
+        timeline_buffer: Optional TimelineBuffer for HITL context.
 
     Returns:
         A compiled LangGraph graph.
@@ -346,7 +506,7 @@ def build_hub_graph(
     # don't fully match our closure-based node pattern.
     graph.add_node(ROUTE_NEXT_NODE, _make_dispatch_node(bag_manager, signal_manager))  # type: ignore[call-overload]
     graph.add_node(ROUTE_ESCALATE, _make_escalate_node())  # type: ignore[call-overload]
-    graph.add_node(ROUTE_SUSPEND, _make_suspend_node(hitl_handler))  # type: ignore[call-overload]
+    graph.add_node(ROUTE_SUSPEND, _make_suspend_node(hitl_handler, timeline_buffer))  # type: ignore[call-overload]
     graph.add_node(ROUTE_COMPLETE, _make_complete_node())  # type: ignore[call-overload]
 
     # Set entry point.

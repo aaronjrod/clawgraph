@@ -9,7 +9,6 @@ from clawgraph.bag.patterns import (
 )
 from clawgraph.core.models import ClawOutput, FailureClass, Signal
 
-
 # ── DocumentNode ─────────────────────────────────────────────────────────────
 
 
@@ -184,10 +183,10 @@ class TestAggregatorBuilder:
         result = ab.run()
 
         assert result.output.signal == Signal.PARTIAL
-        crash_branch = [
+        crash_branch = next(
             br for br in result.output.branch_breakdown
             if br.branch_id == "b2"
-        ][0]
+        )
         assert crash_branch.signal == Signal.FAILED
         assert crash_branch.error_detail is not None
         assert crash_branch.error_detail.failure_class == FailureClass.SYSTEM_CRASH
