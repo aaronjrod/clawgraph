@@ -22,6 +22,7 @@ from clawgraph.bag.manager import BagManager
 from clawgraph.core.models import (
     AggregatorOutput,
     ArchiveEntry,
+    BagContract,
     ClawOutput,
     ErrorDetail,
     FailureClass,
@@ -144,6 +145,7 @@ def route_signal(state: BagState) -> str:
 def _make_dispatch_node(
     bag_manager: BagManager,
     signal_manager: SignalManager,
+    contract: BagContract | None = None,
 ) -> Callable[[BagState], BagState]:
     """Create the dispatch_node function for the StateGraph.
 
@@ -252,6 +254,36 @@ def _make_dispatch_node(
             # Process the signal through SignalManager.
             signal_manager.process_signal(result)
 
+            # BagContract signal validation (F-REQ-25).
+            if (
+                contract
+                and contract.allowed_signals is not None
+                and result.signal not in contract.allowed_signals
+            ):
+                logger.warning(
+                    "CONTRACT VIOLATION: node '%s' emitted %s, "
+                    "allowed: %s. Synthesizing FAILED.",
+                    node_id, result.signal.value,
+                    [s.value for s in contract.allowed_signals],
+                )
+                result = ClawOutput(
+                    signal=Signal.FAILED,
+                    node_id=node_id,
+                    orchestrator_summary=(
+                        f"Contract violation: signal {result.signal.value} "
+                        f"not in allowed_signals."
+                    ),
+                    orchestrator_synthesized=True,
+                    error_detail=ErrorDetail(
+                        failure_class=FailureClass.SCHEMA_MISMATCH,
+                        message=(
+                            f"Signal {result.signal.value} not permitted by "
+                            f"BagContract."
+                        ),
+                    ),
+                )
+                signal_manager.process_signal(result)
+
             updates["current_output"] = result.model_dump()
             updates["iteration_count"] = state.get("iteration_count", 0) + 1
 
@@ -318,7 +350,28 @@ def _make_dispatch_node(
                                 created_by=br.node_id,
                             ).model_dump()
                     updates["document_archive"] = archive
-                # "atomic" → don't commit branch results on PARTIAL.
+
+                    # PARTIAL+eager resolve (Appendix §1.9):
+                    # Trigger stalled re-eval after eager commits.
+                    newly_ready, still_stalled = _resolve_stalled(
+                        stalled_queue, archive, bag_manager,
+                        bag_name=state.get("bag_name", ""),
+                    )
+                    if newly_ready:
+                        rq = list(updates.get("ready_queue", ready_queue))
+                        rq.extend(newly_ready)
+                        updates["ready_queue"] = rq
+                        timeline = list(state.get("timeline", []))
+                        timeline = list(updates.get("timeline", timeline))
+                        timeline.append({
+                            "node_id": node_id,
+                            "signal": "RESOLVING",
+                            "summary": f"PARTIAL eager unblocked: {newly_ready}",
+                        })
+                        updates["timeline"] = timeline
+                    updates["stalled_queue"] = still_stalled
+
+                # "atomic" -> don't commit branch results on PARTIAL.
                 updates["pending_escalation"] = result.model_dump()
 
             # On other escalation signals, set pending_escalation.
@@ -328,6 +381,36 @@ def _make_dispatch_node(
                 Signal.NEED_INTERVENTION,
             ):
                 updates["pending_escalation"] = result.model_dump()
+
+                # Dead-end cascade (Appendix §1.2): when a node FAILED,
+                # cascade any stalled consumers whose prereqs depend on it.
+                if result.signal == Signal.FAILED:
+                    cascaded, surviving = _cascade_dead_ends(
+                        node_id, stalled_queue, bag_manager,
+                    )
+                    if cascaded:
+                        completed_nodes = list(
+                            updates.get("completed_nodes", completed_nodes),
+                        )
+                        completed_nodes.extend(cascaded)
+                        updates["completed_nodes"] = completed_nodes
+
+                        timeline = list(state.get("timeline", []))
+                        timeline = list(updates.get("timeline", timeline))
+                        for cid in cascaded:
+                            timeline.append({
+                                "node_id": cid,
+                                "signal": "DEAD_END",
+                                "summary": (
+                                    f"Cascaded: producer '{node_id}' FAILED"
+                                ),
+                            })
+                        updates["timeline"] = timeline
+                        logger.info(
+                            "DEAD_END: %d node(s) cascaded from '%s' failure: %s",
+                            len(cascaded), node_id, cascaded,
+                        )
+                    updates["stalled_queue"] = surviving
 
                 # Gap 3: Track NEED_INFO retries.
                 if result.signal == Signal.NEED_INFO:
@@ -357,6 +440,25 @@ def _make_dispatch_node(
                 node_id,
                 result.signal.value,
             )
+
+            # Audit policy enforcement (F-REQ-27, Appendix §1.3).
+            # Policy > hint: if audit_policy says always, fire regardless.
+            should_audit = False
+            if node_meta:
+                policy = (node_meta.audit_policy or {}) if node_meta.audit_policy else {}
+                if policy.get("always"):
+                    should_audit = True
+            if not should_audit and result.audit_hint is True:
+                should_audit = True
+            if should_audit:
+                timeline = list(state.get("timeline", []))
+                timeline = list(updates.get("timeline", timeline))
+                timeline.append({
+                    "node_id": node_id,
+                    "signal": "AUDIT_TRIGGERED",
+                    "summary": f"Audit triggered for '{node_id}'",
+                })
+                updates["timeline"] = timeline
 
         except Exception as exc:
             # ── Exception interception (F-REQ-11) ─────────────────
@@ -419,6 +521,34 @@ def _resolve_stalled(
             newly_ready.append(node_id)
 
     return newly_ready, still_stalled
+
+
+def _cascade_dead_ends(
+    failed_node_id: str,
+    stalled_queue: list[str],
+    bag_manager: BagManager,
+) -> tuple[list[str], list[str]]:
+    """Cascade FAILED to stalled nodes whose prereqs depend on the failed node.
+
+    Returns (cascaded, surviving).
+    This handles the dead-end scenario from Appendix §1.2.
+    """
+    failed_key = f"{failed_node_id}_result"
+    cascaded: list[str] = []
+    surviving: list[str] = []
+
+    for node_id in stalled_queue:
+        try:
+            meta = bag_manager.manifest.nodes.get(node_id)
+        except Exception:
+            meta = None
+
+        if meta and meta.requires and failed_key in meta.requires:
+            cascaded.append(node_id)
+        else:
+            surviving.append(node_id)
+
+    return cascaded, surviving
 
 
 def _make_escalate_node() -> Callable[[BagState], BagState]:
@@ -527,6 +657,7 @@ def build_hub_graph(
     hitl_handler: Callable[..., Any] | None = None,
     timeline_buffer: TimelineBuffer | None = None,
     checkpointer: Any | None = None,
+    contract: BagContract | None = None,
 ) -> Any:
     """Build the hub-and-spoke StateGraph for a ClawBag.
 
@@ -551,7 +682,7 @@ def build_hub_graph(
     # Register nodes.
     # NOTE: type: ignore needed because LangGraph's strict overloads
     # don't fully match our closure-based node pattern.
-    graph.add_node(ROUTE_NEXT_NODE, _make_dispatch_node(bag_manager, signal_manager))  # type: ignore[call-overload]
+    graph.add_node(ROUTE_NEXT_NODE, _make_dispatch_node(bag_manager, signal_manager, contract))  # type: ignore[call-overload]
     graph.add_node(ROUTE_ESCALATE, _make_escalate_node())  # type: ignore[call-overload]
     graph.add_node(ROUTE_SUSPEND, _make_suspend_node(hitl_handler, timeline_buffer))  # type: ignore[call-overload]
     graph.add_node(ROUTE_COMPLETE, _make_complete_node())  # type: ignore[call-overload]

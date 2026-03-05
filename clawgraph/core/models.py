@@ -102,6 +102,18 @@ class ArchiveEntry(BaseModel):
     created_by: str = ""  # Node ID that produced this entry.
 
 
+class BagContract(BaseModel):
+    """Strict I/O schema for a ClawBag. (F-REQ-25)
+
+    Validated at ``start_job`` (inputs) and ``dispatch_node`` (outputs).
+    If no contract is set, all inputs and outputs are accepted (backwards compat).
+    """
+
+    required_inputs: list[str] = Field(default_factory=list)  # Artifact IDs
+    required_outputs: list[str] = Field(default_factory=list)  # Fields in ClawOutput
+    allowed_signals: list[Signal] | None = None  # Restrict signal types
+
+
 # ── ClawOutput (Canonical Model) ──────────────────────────────────────────────
 
 

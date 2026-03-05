@@ -16,7 +16,7 @@ from typing import Any, TypedDict
 
 from clawgraph.bag.manager import BagManager
 from clawgraph.bag.skills import SkillsContextManager
-from clawgraph.core.models import ArchiveEntry
+from clawgraph.core.models import ArchiveEntry, BagContract
 from clawgraph.core.signals import SignalManager
 from clawgraph.orchestrator.prompts import build_orchestrator_prompt
 
@@ -117,6 +117,7 @@ class ClawBag:
         max_iterations: int = 10,
         skills_dir: str | None = None,
         checkpointer: Any | None = None,
+        contract: BagContract | None = None,
     ) -> None:
         self._name = name
         self._max_iterations = max_iterations
@@ -133,6 +134,9 @@ class ClawBag:
         # Durable checkpointer (Architecture §8).
         self._checkpointer = checkpointer
 
+        # Bag contract (F-REQ-25).
+        self._contract = contract
+
         # HITL handler.
         self._hitl_handler: Callable[..., Any] | None = None
 
@@ -141,6 +145,11 @@ class ClawBag:
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def contract(self) -> BagContract | None:
+        """Access the BagContract (F-REQ-25)."""
+        return self._contract
 
     @property
     def manager(self) -> BagManager:
@@ -204,6 +213,7 @@ class ClawBag:
             hitl_handler=self._hitl_handler,
             timeline_buffer=self._signal_manager._timeline,
             checkpointer=self._checkpointer,
+            contract=self._contract,
         )
 
         self._compiled_graph = graph
@@ -264,6 +274,17 @@ class ClawBag:
         Returns:
             The final BagState after execution completes or suspends.
         """
+        # Validate BagContract inputs (F-REQ-25).
+        if self._contract and self._contract.required_inputs:
+            raw = inputs or {}
+            missing = [r for r in self._contract.required_inputs if r not in raw]
+            if missing:
+                from clawgraph.core.exceptions import BagContractError
+
+                raise BagContractError(
+                    f"Missing required inputs: {missing}"
+                )
+
         # Compile if needed.
         self.compile_graph_if_dirty()
 
