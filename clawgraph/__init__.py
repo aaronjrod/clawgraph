@@ -5,6 +5,8 @@ from clawgraph.bag.node import ClawNodeMetadata, clawnode
 from clawgraph.bag.skills import SkillsContextManager
 from clawgraph.core.models import (
     AggregatorOutput,
+    ArchiveEntry,
+    BagContract,
     BranchResult,
     ClawOutput,
     ErrorDetail,
@@ -16,9 +18,14 @@ from clawgraph.core.models import (
 from clawgraph.core.signals import SignalManager
 from clawgraph.core.timeline import TimelineBuffer, TimelineEvent
 from clawgraph.orchestrator.graph import BagState, ClawBag
+from clawgraph.storage.archive import DocumentArchive
+from clawgraph.telemetry.hud import build_hud_snapshot
+from clawgraph.telemetry.links import compute_implicit_links
 
 __all__ = [
     "AggregatorOutput",
+    "ArchiveEntry",
+    "BagContract",
     "BagManager",
     "BagManifest",
     "BagState",
@@ -27,6 +34,7 @@ __all__ = [
     "ClawBag",
     "ClawNodeMetadata",
     "ClawOutput",
+    "DocumentArchive",
     "ErrorDetail",
     "FailureClass",
     "HumanRequest",
@@ -38,5 +46,8 @@ __all__ = [
     "SkillsContextManager",
     "TimelineBuffer",
     "TimelineEvent",
+    # Telemetry
+    "build_hud_snapshot",
     "clawnode",
+    "compute_implicit_links",
 ]

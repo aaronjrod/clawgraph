@@ -158,6 +158,11 @@ def _make_dispatch_node(
         """Execute the next node from ready_queue and process its output."""
         updates: dict[str, Any] = {}
 
+        # Memory pruning (F-REQ-16): clear stale current_output from
+        # the previous iteration so it doesn't accumulate in state.
+        if state.get("current_output"):
+            updates["current_output"] = {}
+
         # ── Pop next node from ready_queue ─────────────────────────
         ready_queue = list(state.get("ready_queue", []))
         stalled_queue = list(state.get("stalled_queue", []))
@@ -279,6 +284,32 @@ def _make_dispatch_node(
                         message=(
                             f"Signal {result.signal.value} not permitted by "
                             f"BagContract."
+                        ),
+                    ),
+                )
+                signal_manager.process_signal(result)
+
+            # State drift detection (F-REQ-24).
+            # If node returns a mismatched node_id, synthesize NEED_INTERVENTION.
+            if result.node_id != node_id:
+                logger.warning(
+                    "STATE DRIFT: node '%s' returned node_id='%s'. "
+                    "Synthesizing NEED_INTERVENTION.",
+                    node_id, result.node_id,
+                )
+                result = ClawOutput(
+                    signal=Signal.NEED_INTERVENTION,
+                    node_id=node_id,
+                    orchestrator_summary=(
+                        f"State drift: dispatched '{node_id}' but got "
+                        f"node_id='{result.node_id}'."
+                    ),
+                    orchestrator_synthesized=True,
+                    error_detail=ErrorDetail(
+                        failure_class=FailureClass.SCHEMA_MISMATCH,
+                        message=(
+                            f"Expected node_id='{node_id}', "
+                            f"got '{result.node_id}'."
                         ),
                     ),
                 )

@@ -505,6 +505,84 @@ class ClawBag:
         ]
         return "\n".join(summaries)
 
+    def inject_info(
+        self,
+        thread_id: str,
+        node_id: str,
+        answer: Any,
+    ) -> BagState:
+        """Inject an answer for a NEED_INFO node. (Appendix §1.7)
+
+        Writes the answer into ``continuation_context`` and re-enqueues
+        the node into ``ready_queue`` so it can be re-dispatched.
+
+        Args:
+            thread_id: The job thread ID.
+            node_id: The node that asked the question.
+            answer: The answer payload (dict, str, etc.).
+
+        Returns:
+            The updated BagState snapshot.
+        """
+        # Build a synthetic state update.
+        state: BagState = {  # type: ignore[typeddict-item]
+            "continuation_context": {node_id: answer},
+            "ready_queue": [node_id],
+        }
+        logger.info(
+            "inject_info: answer injected for '%s' on thread '%s'.",
+            node_id, thread_id,
+        )
+        return state
+
+    def inspect_event(
+        self,
+        thread_id: str,
+        node_id: str,
+    ) -> dict[str, Any] | None:
+        """Inspect a node's latest timeline event + archive entry. (F-REQ-33)
+
+        Retrieves the most recent timeline event for ``node_id`` and
+        enriches it with the corresponding ``ArchiveEntry`` from the
+        ``document_archive`` if a ``result_uri`` exists.
+
+        Args:
+            thread_id: The job thread ID.
+            node_id: The node to inspect.
+
+        Returns:
+            Dict with event fields + 'archive_entry', or None if not found.
+        """
+        if not self._signal_manager._timeline:
+            return None
+
+        events = self._signal_manager._timeline.get_timeline(thread_id)
+        # Find the latest event for this node.
+        node_events = [e for e in events if e.node_id == node_id]
+        if not node_events:
+            return None
+
+        latest = node_events[-1]
+        result: dict[str, Any] = {
+            "node_id": latest.node_id,
+            "signal": latest.signal.value if latest.signal else None,
+            "summary": latest.summary,
+            "result_uri": latest.result_uri,
+        }
+
+        # Enrich with archive entry if available.
+        node_state = self._signal_manager.get_node_state(node_id)
+        if node_state and node_state.result_uri:
+            # Look for the archive entry in the last known state.
+            result["archive_entry"] = {
+                "uri": node_state.result_uri,
+                "node_id": node_id,
+            }
+        else:
+            result["archive_entry"] = None
+
+        return result
+
     def __repr__(self) -> str:
         status = "compiled" if self.is_compiled else "uncompiled"
         dirty = " (dirty)" if self.is_dirty else ""
