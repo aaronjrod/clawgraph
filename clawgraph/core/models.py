@@ -88,6 +88,20 @@ class BranchResult(BaseModel):
     error_detail: ErrorDetail | None = None
 
 
+class ArchiveEntry(BaseModel):
+    """A document pointer with multi-domain visibility tags. (F-REQ-17)
+
+    The document_archive maps artifact IDs to ArchiveEntry objects.
+    Visibility rule: a node in bag X can see an entry if
+    ``entry.domain == X`` or ``"public" in entry.tags``.
+    """
+
+    uri: str
+    domain: str = ""  # Owning bag name.
+    tags: list[str] = Field(default_factory=list)  # e.g. ["public", "internal"]
+    created_by: str = ""  # Node ID that produced this entry.
+
+
 # ── ClawOutput (Canonical Model) ──────────────────────────────────────────────
 
 

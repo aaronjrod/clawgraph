@@ -1,6 +1,5 @@
 """Audit gap TDD tests -- Gaps 2, 3, 4, 5."""
 
-import pytest
 
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import (
@@ -142,7 +141,6 @@ class TestGap4PartialCommitPolicy:
         )
 
 
-@pytest.mark.xfail(reason="Gap 5 deferred to Phase 8: domain-tag visibility not yet implemented")
 class TestGap5MultiDomainTagVisibility:
     def test_prerequisite_checker_respects_domain_tags(self):
         """Gap 5 (F-REQ-17): Prerequisite resolution should respect domain tags."""

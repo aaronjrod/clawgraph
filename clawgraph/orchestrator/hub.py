@@ -21,6 +21,7 @@ from langgraph.graph import END, StateGraph
 from clawgraph.bag.manager import BagManager
 from clawgraph.core.models import (
     AggregatorOutput,
+    ArchiveEntry,
     ClawOutput,
     ErrorDetail,
     FailureClass,
@@ -31,6 +32,25 @@ from clawgraph.core.timeline import TimelineBuffer
 from clawgraph.orchestrator.graph import BagState
 
 logger = logging.getLogger(__name__)
+
+
+def _is_visible(entry: Any, bag_name: str) -> bool:
+    """Check if a document_archive entry is visible to the given bag.
+
+    Visibility rule (F-REQ-17):
+    - Plain strings (legacy) are always visible.
+    - ArchiveEntry dicts: visible if ``domain == bag_name`` or ``"public" in tags``.
+    - None (missing key) -> not visible.
+    """
+    if entry is None:
+        return False
+    if isinstance(entry, str):
+        return True  # Legacy format -- always visible.
+    if isinstance(entry, dict):
+        domain = entry.get("domain", "")
+        tags = entry.get("tags", [])
+        return domain == bag_name or "public" in tags
+    return False
 
 
 # ── Signal Routing (Conditional Edges) ────────────────────────────────────────
@@ -164,7 +184,11 @@ def _make_dispatch_node(
 
         if node_meta and node_meta.requires:
             archive = state.get("document_archive", {})
-            missing = [r for r in node_meta.requires if r not in archive]
+            bag_name = state.get("bag_name", "")
+            missing = [
+                r for r in node_meta.requires
+                if not _is_visible(archive.get(r), bag_name)
+            ]
             if missing:
                 # Gap 1 fix: Move to stalled_queue, NOT NEED_INTERVENTION.
                 signal_manager.mark_stalled(node_id)
@@ -240,7 +264,12 @@ def _make_dispatch_node(
                 # Store result in document_archive if result_uri exists.
                 archive = dict(state.get("document_archive", {}))
                 if result.result_uri:
-                    archive[f"{node_id}_result"] = result.result_uri
+                    archive[f"{node_id}_result"] = ArchiveEntry(
+                        uri=result.result_uri,
+                        domain=state.get("bag_name", ""),
+                        tags=["public"],
+                        created_by=node_id,
+                    ).model_dump()
                     updates["document_archive"] = archive
 
                 # Mark node as completed.
@@ -250,6 +279,7 @@ def _make_dispatch_node(
                 # ── RESOLVING: re-evaluate stalled_queue ──────────
                 newly_ready, still_stalled = _resolve_stalled(
                     stalled_queue, archive, bag_manager,
+                    bag_name=state.get("bag_name", ""),
                 )
                 if newly_ready:
                     ready_queue = list(updates.get("ready_queue", ready_queue))
@@ -281,7 +311,12 @@ def _make_dispatch_node(
                     # Commit successful branch results immediately.
                     for br in result.branch_breakdown or []:
                         if br.signal == Signal.DONE and br.result_uri:
-                            archive[f"{br.branch_id}_result"] = br.result_uri
+                            archive[f"{br.branch_id}_result"] = ArchiveEntry(
+                                uri=br.result_uri,
+                                domain=state.get("bag_name", ""),
+                                tags=["public"],
+                                created_by=br.node_id,
+                            ).model_dump()
                     updates["document_archive"] = archive
                 # "atomic" → don't commit branch results on PARTIAL.
                 updates["pending_escalation"] = result.model_dump()
@@ -299,12 +334,19 @@ def _make_dispatch_node(
                     tracking = dict(state.get("need_info_tracking", {}))
                     node_track = dict(tracking.get(node_id, {
                         "retries": 0,
-                        "first_seen": time.time(),
                         "max_retries": 3,
+                        "first_seen": time.time(),
                     }))
                     node_track["retries"] = node_track.get("retries", 0) + 1
                     tracking[node_id] = node_track
                     updates["need_info_tracking"] = tracking
+
+                    # Re-enqueue the node if within retry budget.
+                    max_retries = node_track.get("max_retries", 3)
+                    if node_track["retries"] < max_retries:
+                        rq = list(updates.get("ready_queue", ready_queue))
+                        rq.append(node_id)
+                        updates["ready_queue"] = rq
 
             # On HOLD_FOR_HUMAN, mark as suspended.
             if result.signal == Signal.HOLD_FOR_HUMAN:
@@ -345,13 +387,14 @@ def _make_dispatch_node(
 
 def _resolve_stalled(
     stalled_queue: list[str],
-    archive: dict[str, str],
+    archive: dict[str, Any],
     bag_manager: BagManager,
+    bag_name: str = "",
 ) -> tuple[list[str], list[str]]:
     """Re-evaluate stalled nodes against the current document_archive.
 
     Returns (newly_ready, still_stalled).
-    This is the RESOLVING step from F-REQ-34 / Architecture §10.2.
+    This is the RESOLVING step from F-REQ-34 / Architecture S10.2.
     """
     newly_ready: list[str] = []
     still_stalled: list[str] = []
@@ -363,7 +406,10 @@ def _resolve_stalled(
             meta = None
 
         if meta and meta.requires:
-            missing = [r for r in meta.requires if r not in archive]
+            missing = [
+                r for r in meta.requires
+                if not _is_visible(archive.get(r), bag_name)
+            ]
             if missing:
                 still_stalled.append(node_id)
             else:
@@ -480,6 +526,7 @@ def build_hub_graph(
     signal_manager: SignalManager,
     hitl_handler: Callable[..., Any] | None = None,
     timeline_buffer: TimelineBuffer | None = None,
+    checkpointer: Any | None = None,
 ) -> Any:
     """Build the hub-and-spoke StateGraph for a ClawBag.
 
@@ -529,7 +576,10 @@ def build_hub_graph(
     graph.add_edge(ROUTE_SUSPEND, END)
     graph.add_edge(ROUTE_COMPLETE, END)
 
-    return graph.compile()
+    compile_kwargs: dict[str, Any] = {}
+    if checkpointer is not None:
+        compile_kwargs["checkpointer"] = checkpointer
+    return graph.compile(**compile_kwargs)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

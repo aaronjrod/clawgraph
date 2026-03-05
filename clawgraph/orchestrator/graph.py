@@ -16,6 +16,7 @@ from typing import Any, TypedDict
 
 from clawgraph.bag.manager import BagManager
 from clawgraph.bag.skills import SkillsContextManager
+from clawgraph.core.models import ArchiveEntry
 from clawgraph.core.signals import SignalManager
 from clawgraph.orchestrator.prompts import build_orchestrator_prompt
 
@@ -41,7 +42,8 @@ class BagState(TypedDict, total=False):
 
     # ── Bag Context ────────────────────────────────────────────────
     bag_manifest: dict[str, Any]  # Tier 1 manifest snapshot (from get_inventory).
-    document_archive: dict[str, str]  # {artifact_id: uri} — pointer registry.
+    bag_name: str  # Name of this bag (for domain visibility).
+    document_archive: dict[str, Any]  # {artifact_id: ArchiveEntry|str} -- pointer registry.
     phase_history: list[str]  # Sequential accomplishment summaries.
 
     # ── Execution Queues (Gap 6 / F-REQ-12) ───────────────────────
@@ -66,6 +68,25 @@ class BagState(TypedDict, total=False):
     # ── HITL ───────────────────────────────────────────────────────
     human_response: str | None  # Injected by resume_job().
     suspended: bool  # True when waiting for human input.
+
+
+def _entry_visible(entry: Any, bag_name: str) -> bool:
+    """Check if a document_archive entry is visible to the given bag.
+
+    Visibility rule (F-REQ-17):
+    - Plain strings (legacy) are always visible.
+    - ArchiveEntry dicts: visible if ``domain == bag_name`` or ``"public" in tags``.
+    - None (missing key) → not visible.
+    """
+    if entry is None:
+        return False
+    if isinstance(entry, str):
+        return True  # Legacy format — always visible.
+    if isinstance(entry, dict):
+        domain = entry.get("domain", "")
+        tags = entry.get("tags", [])
+        return domain == bag_name or "public" in tags
+    return False
 
 
 # ── ClawBag ───────────────────────────────────────────────────────────────────
@@ -95,6 +116,7 @@ class ClawBag:
         name: str,
         max_iterations: int = 10,
         skills_dir: str | None = None,
+        checkpointer: Any | None = None,
     ) -> None:
         self._name = name
         self._max_iterations = max_iterations
@@ -107,6 +129,9 @@ class ClawBag:
         # Compilation state.
         self._compiled_graph: Any | None = None
         self._last_compiled_version: int = -1
+
+        # Durable checkpointer (Architecture §8).
+        self._checkpointer = checkpointer
 
         # HITL handler.
         self._hitl_handler: Callable[..., Any] | None = None
@@ -178,6 +203,7 @@ class ClawBag:
             signal_manager=self._signal_manager,
             hitl_handler=self._hitl_handler,
             timeline_buffer=self._signal_manager._timeline,
+            checkpointer=self._checkpointer,
         )
 
         self._compiled_graph = graph
@@ -250,8 +276,18 @@ class ClawBag:
         iterations = max_iterations or self._max_iterations
 
         # Build initial state.
-        archive = inputs or {}
+        raw_inputs = inputs or {}
         inventory = self._manager.get_inventory()
+
+        # Convert raw string inputs to ArchiveEntry objects.
+        archive: dict[str, Any] = {}
+        for key, val in raw_inputs.items():
+            if isinstance(val, str):
+                archive[key] = ArchiveEntry(
+                    uri=val, domain=self._name, tags=["public"], created_by="input",
+                ).model_dump()
+            else:
+                archive[key] = val  # Already an ArchiveEntry dict.
 
         # Partition nodes into ready vs stalled based on prereqs.
         ready: list[str] = []
@@ -259,7 +295,10 @@ class ClawBag:
         initial_timeline: list[dict[str, Any]] = []
         for nid, meta in inventory.get("nodes", {}).items():
             requires = meta.get("requires") or []
-            missing = [r for r in requires if r not in archive]
+            missing = [
+                r for r in requires
+                if not _entry_visible(archive.get(r), self._name)
+            ]
             if missing:
                 stalled.append(nid)
                 initial_timeline.append({
@@ -275,6 +314,7 @@ class ClawBag:
             "thread_id": thread_id or f"{self._name}_{datetime.now().isoformat()}",
             "bag_manifest": inventory,
             "document_archive": archive,
+            "bag_name": self._name,
             "phase_history": [],
             "current_output": {},
             "current_node_id": None,
@@ -357,6 +397,7 @@ class ClawBag:
                 "objective": "",  # Will be restored from checkpoint.
                 "thread_id": thread_id,
                 "bag_manifest": self._manager.get_inventory(),
+                "bag_name": self._name,
                 "document_archive": {},
                 "phase_history": [],
                 "current_output": {},
