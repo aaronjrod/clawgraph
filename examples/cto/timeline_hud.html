@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ClawGraph | Command Center HUD</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
             --bg-darker: #010409;
@@ -35,6 +36,25 @@
             overflow: hidden;
         }
 
+        /* Minimal Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
         /* Layout Structure */
         .sidebar-left,
         .sidebar-right {
@@ -50,6 +70,21 @@
             width: 380px;
             border-right: none;
             border-left: 1px solid var(--border);
+        }
+
+        /* Custom Resizer Handle */
+        .resizer {
+            width: 6px;
+            cursor: col-resize;
+            background: transparent;
+            z-index: 20;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .resizer:hover,
+        .resizer.resizing {
+            background: var(--accent);
         }
 
         main {
@@ -504,6 +539,86 @@
             border-radius: 4px;
         }
 
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 50%;
+            min-width: 400px;
+            max-width: 800px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            padding: 16px 24px;
+            background: var(--bg-darker);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            color: #fff;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        .modal-body h1,
+        .modal-body h2,
+        .modal-body h3 {
+            color: var(--text-bright);
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-body ul {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
         .toggle-btn.active {
             background: var(--border);
             color: #fff;
@@ -531,251 +646,414 @@
 <body>
 
     <!-- LEFT: DOCUMENT MANAGER -->
-    <div class="sidebar-left">
+    <div class="sidebar-left" id="sidebar-left">
         <div class="panel-header">
             <h2>DOCUMENTS</h2>
-            <div class="toggle-group">
-                <button class="toggle-btn active">ALL</button>
-                <button class="toggle-btn">UNASSIGNED</button>
+            <div class="toggle-group" style="background: transparent;">
+                <select id="doc-filter" class="toggle-btn active"
+                    style="-webkit-appearance: none; appearance: none; text-align: center; outline: none; padding: 4px 12px; cursor: pointer;">
+                    <option value="ALL">ALL</option>
+                </select>
             </div>
         </div>
-        <div class="doc-list">
-            <div class="doc-item">
-                <span class="doc-name">clinical_protocol_v2.pdf</span>
-                <div class="doc-meta">
-                    <span class="doc-tag tag-green">Reg_Ops</span>
-                    <span>12.4 MB</span>
-                </div>
-            </div>
-            <div class="doc-item">
-                <span class="doc-name">patient_consent_forms.zip</span>
-                <div class="doc-meta">
-                    <span class="doc-tag tag-blue">Clin_Ops</span>
-                    <span>45.1 MB</span>
-                </div>
-            </div>
-            <div class="doc-item">
-                <span class="doc-name">lab_results_march.xlsx</span>
-                <div class="doc-meta">
-                    <span class="doc-tag tag-blue">Clin_Ops</span>
-                    <span>2.3 MB</span>
-                </div>
-            </div>
-            <div class="doc-item">
-                <span class="doc-name">safety_audit_report.md</span>
-                <div class="doc-meta">
-                    <span class="doc-tag tag-orange">Strategy</span>
-                    <span>45 KB</span>
-                </div>
-            </div>
-        </div>
-        <div class="upload-btn">
-            <button class="primary">+ Upload Knowledge</button>
+        <div class="doc-list" id="doc-list">
+            <!-- Dynamic Documents -->
         </div>
     </div>
+
+    <div class="resizer" id="resizer-left"></div>
 
     <!-- CENTER: ORCHESTRATION HUB -->
     <main>
         <div class="panel-header" style="background: var(--bg-darker)">
             <h2>WORKER ORCHESTRATION</h2>
-            <div class="stat-box" style="font-size: 0.7rem; color: var(--text-dim)">
-                SYSTEM STATUS: <span style="color: var(--success); font-weight: bold">OPERATIONAL</span>
+            <div id="connection-status" style="font-size: 0.7rem; color: var(--success); font-weight: bold">
+                CONNECTING...
             </div>
         </div>
 
-        <div class="worker-container">
-            <!-- 1. Clinical Ops -->
-            <div class="worker-card theme-blue">
-                <div class="worker-title">
-                    <h3>Clinical Ops</h3>
-                    <span class="worker-status" style="color: var(--warning)">RUNNING</span>
-                </div>
-                <div class="activity-block">
-                    <span class="activity-label">Active Agent</span>
-                    <div class="activity-content">Patient Tracking Sync</div>
-                </div>
-                <ul class="steps">
-                    <li class="step done">
-                        <i></i>
-                        <details>
-                            <summary>Data Intake Complete</summary>
-                            <div class="summary-content">
-                                Processed 45 patient files. Validation against schema-v4 matched 100%. Metadata indexed
-                                to primary bag.
-                            </div>
-                        </details>
-                    </li>
-                    <li class="step active"><i></i> Syncing v1.2 Documents</li>
-                    <li class="step"><i></i> Validation Signature</li>
-                    <li class="step">
-                        <i></i>
-                        <details>
-                            <summary>...</summary>
-                            <div class="upcoming-list">
-                                <div class="upcoming-item">• Cross-domain Handover</div>
-                                <div class="upcoming-item">• Resource Deallocation</div>
-                            </div>
-                        </details>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- 2. CMC Regulatory -->
-            <div class="worker-card theme-orange">
-                <div class="worker-title">
-                    <h3>CMC Regulatory</h3>
-                    <span class="worker-status" style="color: var(--danger)">FAILED</span>
-                </div>
-                <div class="activity-block">
-                    <span class="activity-label">Active Agent</span>
-                    <div class="activity-content">Stability Master</div>
-                </div>
-                <ul class="steps">
-                    <li class="step done">
-                        <i></i>
-                        <details>
-                            <summary>Stability Init</summary>
-                            <div class="summary-content">
-                                Environment seeds established. Baseline drift set at 0.012%. All sensors reporting
-                                healthy logs.
-                            </div>
-                        </details>
-                    </li>
-                    <li class="step failed">
-                        <i></i>
-                        <details>
-                            <summary>Mismatch in Impurity Drift</summary>
-                            <div class="summary-content failure">
-                                <strong>Failure Class:</strong> VALIDATION_ERROR<br>
-                                <strong>Message:</strong> Detected 0.045% variance in Batch Alpha-9. Automated
-                                recalibration failed. Requires manual sign-off.<br>
-                                <strong>Expected:</strong> &lt;= 0.020% drift<br>
-                                <strong>Actual:</strong> 0.045% drift<br>
-                                <strong>Suggested Fix:</strong> recalibrate_sensors(batch="Alpha-9")
-                            </div>
-                        </details>
-                    </li>
-                    <li class="step"><i></i> Validation Queue</li>
-                    <li class="step">
-                        <i></i>
-                        <details>
-                            <summary>...</summary>
-                            <div class="upcoming-list">
-                                <div class="upcoming-item">• Drift Recalibration</div>
-                            </div>
-                        </details>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- 3. Reg Ops -->
-            <div class="worker-card theme-green">
-                <div class="worker-title">
-                    <h3>Regulatory Ops</h3>
-                    <span class="worker-status" style="color: var(--success)">IDLE</span>
-                </div>
-                <div class="activity-block">
-                    <span class="activity-label">Last Agent</span>
-                    <div class="activity-content">eCTD Publisher</div>
-                </div>
-                <ul class="steps">
-                    <li class="step done">
-                        <i></i>
-                        <details>
-                            <summary>Formatting Gate</summary>
-                            <div class="summary-content">
-                                Document layout checked for v4.2 standards. All margins and font embeds verified.
-                            </div>
-                        </details>
-                    </li>
-                    <li class="step done">
-                        <i></i>
-                        <details>
-                            <summary>Publishing Complete</summary>
-                            <div class="summary-content">
-                                eCTD package generated. SHA-256 hash: 0x4f12... Ready for filing gate.
-                            </div>
-                        </details>
-                    </li>
-                    <li class="step"><i></i> Launch Prep</li>
-                    <li class="step">
-                        <i></i>
-                        <details>
-                            <summary>...</summary>
-                            <div class="upcoming-list">
-                                <div class="upcoming-item">• Global Coord Handover</div>
-                            </div>
-                        </details>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- 4. Clinical Reg -->
-            <div class="worker-card theme-purple">
-                <div class="worker-title">
-                    <h3>Clinical Reg</h3>
-                    <span class="worker-status" style="color: var(--orange)">STALLED</span>
-                </div>
-                <div class="activity-block">
-                    <span class="activity-label">Target Agent</span>
-                    <div class="activity-content">IND Submission Mgr</div>
-                    <div class="dependency-badge">
-                        <span class="dep-label">WAITING ON</span>
-                        <span class="dep-ref blue">Clinical Ops</span>: Patient data sync required for Module 5
-                        consolidation.
-                    </div>
-                </div>
-                <ul class="steps">
-                    <li class="step"><i></i> Protocol Review</li>
-                    <li class="step">
-                        <i></i>
-                        <details>
-                            <summary>...</summary>
-                            <div class="upcoming-list">
-                                <div class="upcoming-item">• Gathering Signatures</div>
-                                <div class="upcoming-item">• Filing Gate</div>
-                            </div>
-                        </details>
-                    </li>
-                </ul>
-            </div>
+        <div class="worker-container" id="worker-container">
+            <!-- Dynamic Worker Cards -->
         </div>
     </main>
 
+    <div class="resizer" id="resizer-right"></div>
+
     <!-- RIGHT: ORCHESTRATOR CHAT -->
-    <div class="sidebar-right">
+    <div class="sidebar-right" id="sidebar-right">
         <div class="panel-header">
             <h2>ORCHESTRATOR</h2>
-            <div class="toggle-group">
-                <button class="toggle-btn active">SUPER</button>
-                <button class="toggle-btn">SUB</button>
+            <div class="toggle-group" style="background: transparent;">
+                <select id="chat-target" class="toggle-btn active"
+                    style="-webkit-appearance: none; appearance: none; text-align: center; outline: none; padding: 4px 12px; cursor: pointer;">
+                    <option value="SUPER">SUPER</option>
+                </select>
             </div>
         </div>
-        <div class="chat-view">
-            <div class="msg system">
-                <span class="msg-sender">SYSTEM [12:04]</span>
-                Kernel initialized. ClawGraph heartbeat detected.
-            </div>
-            <div class="msg orchestrator">
-                <span class="msg-sender orch">Claude Code [12:05]</span>
-                Ready to coordinate the Global Clinical Trial. I see the CMC_Stability issue - I've flagged it for your
-                intervention.
-            </div>
-            <div class="msg user">
-                <span class="msg-sender">USER [12:08]</span>
-                What documents is Clinical Ops using right now?
-            </div>
-            <div class="msg orchestrator">
-                <span class="msg-sender orch">Claude Code [12:08]</span>
-                They are currently syncing the `patient_consent_forms.zip` and cross-referencing with
-                `lab_results_march.xlsx`.
-            </div>
+        <div class="chat-view" id="chat-view">
+            <!-- Dynamic Chat Logs -->
         </div>
         <div class="chat-input-area">
             <input type="text" placeholder="Type a message...">
         </div>
     </div>
 
+    <!-- Document Modal -->
+    <div class="modal-overlay" id="doc-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Document Preview</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const workerContainer = document.getElementById('worker-container');
+        const docList = document.getElementById('doc-list');
+        const chatView = document.getElementById('chat-view');
+        const statusEl = document.getElementById('connection-status');
+
+        const themes = {
+            'clinical_regulatory': 'theme-purple',
+            'cmc_regulatory': 'theme-orange',
+            'clinical_ops': 'theme-blue',
+            'reg_ops': 'theme-green',
+            'strategy_labeling': 'theme-purple',
+            'marketing': 'theme-blue'
+        };
+
+        const tagThemes = {
+            'clinical_regulatory': 'tag-purple',
+            'cmc_regulatory': 'tag-orange',
+            'clinical_ops': 'tag-blue',
+            'reg_ops': 'tag-green',
+            'strategy_labeling': 'tag-orange',
+            'marketing': 'tag-blue'
+        };
+
+        async function fetchSnapshot() {
+            try {
+                const res = await fetch('/api/snapshot');
+                if (!res.ok) throw new Error("Offline");
+                const data = await res.json();
+
+                statusEl.textContent = 'SYSTEM STATUS: OPERATIONAL';
+                statusEl.style.color = 'var(--success)';
+                if (data.bags) {
+                    updateFilterOptions(data.bags);
+                    renderDocuments(data.documents);
+                    renderBags(data.bags);
+                }
+                if (data.chat_log) {
+                    renderChat(data.chat_log);
+                }
+
+                // Re-setup input listeners in case DOM was refreshed
+                setupChatInput();
+            } catch (err) {
+                statusEl.textContent = 'SYSTEM STATUS: DISCONNECTED';
+                statusEl.style.color = 'var(--danger)';
+            }
+        }
+
+        let knownBags = new Set();
+        const docFilter = document.getElementById('doc-filter');
+        const chatTarget = document.getElementById('chat-target');
+
+        docFilter.addEventListener('change', () => fetchSnapshot());
+
+        function updateFilterOptions(bags) {
+            bags.forEach(bag => {
+                if (!knownBags.has(bag.name)) {
+                    knownBags.add(bag.name);
+                    const opt1 = document.createElement('option');
+                    opt1.value = bag.name;
+                    opt1.textContent = bag.name.toUpperCase();
+                    docFilter.appendChild(opt1);
+
+                    const opt2 = document.createElement('option');
+                    opt2.value = bag.name;
+                    opt2.textContent = bag.name.toUpperCase();
+                    chatTarget.appendChild(opt2);
+                }
+            });
+        }
+
+        function renderDocuments(docs) {
+            docList.innerHTML = '';
+            const filterValue = docFilter.value;
+            Object.values(docs).forEach(doc => {
+                if (filterValue !== 'ALL' && doc.domain !== filterValue) return;
+
+                const item = document.createElement('div');
+                item.className = 'doc-item';
+                item.style.cursor = 'pointer'; // indicate clickable
+                const tagTheme = tagThemes[doc.domain] || '';
+
+                // Add version tags
+                const version = doc.version || 'v1.0';
+
+                item.innerHTML = `
+                    <span class="doc-name">${doc.uri.split('/').pop()}</span>
+                    <div class="doc-meta" style="justify-content: space-between; width: 100%">
+                        <div>
+                            <span class="doc-tag ${tagTheme}">${doc.domain || 'Global'}</span>
+                            <span>Artifact</span>
+                        </div>
+                        <span style="font-size: 0.65rem; color: var(--text-dim)">${version}</span>
+                    </div>
+                `;
+
+                // Add click listener for preview
+                item.addEventListener('click', () => openModal(doc.uri));
+
+                docList.appendChild(item);
+            });
+        }
+
+        async function openModal(uri) {
+            const modal = document.getElementById('doc-modal');
+            const title = document.getElementById('modal-title');
+            const body = document.getElementById('modal-body');
+
+            modal.classList.add('active');
+            title.textContent = uri.split('/').pop();
+            body.textContent = 'Loading...';
+
+            try {
+                const res = await fetch('/api/documents/' + encodeURIComponent(uri));
+                if (!res.ok) throw new Error("Failed to load");
+                const data = await res.json();
+                body.innerHTML = marked.parse(data.content);
+            } catch (e) {
+                body.textContent = 'Error loading document preview.';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('doc-modal').classList.remove('active');
+        }
+
+        // Close modal when pressing ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Close modal when clicking on the darkened overlay (outside the card)
+        document.getElementById('doc-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('doc-modal')) {
+                closeModal();
+            }
+        });
+
+        function renderBags(bags) {
+            // Preserve open <details> state
+            const openDetails = new Set();
+            document.querySelectorAll('details[open]').forEach(el => {
+                const summary = el.querySelector('summary');
+                if (summary) openDetails.add(summary.textContent.trim());
+            });
+
+            workerContainer.innerHTML = '';
+            bags.forEach(bag => {
+                const theme = themes[bag.name] || 'theme-blue';
+                const card = document.createElement('div');
+                card.className = `worker-card ${theme}`;
+
+                const activeNode = bag.nodes.find(n => n.status === 'RUNNING');
+                const lastNode = bag.nodes.slice().reverse().find(n => n.status !== 'PENDING' && n.status !== 'RUNNING');
+
+                let activityHtml = '';
+                if (activeNode) {
+                    activityHtml = `
+                        <div class="activity-block">
+                            <span class="activity-label">Active Agent</span>
+                            <div class="activity-content">${activeNode.name}</div>
+                        </div>
+                    `;
+                } else if (lastNode) {
+                    activityHtml = `
+                        <div class="activity-block">
+                            <span class="activity-label">Last Agent</span>
+                            <div class="activity-content">${lastNode.name}</div>
+                        </div>
+                    `;
+                }
+
+                // Deduplicate events so we only show the latest state per node in the visual timeline
+                const nodeEvents = new Map();
+                bag.timeline.forEach(event => {
+                    if (event.node_id) {
+                        nodeEvents.set(event.node_id, event);
+                    }
+                });
+                const uniqueSteps = Array.from(nodeEvents.values());
+
+                let stepsHtml = uniqueSteps.map((event, idx) => {
+                    const signal = event.signal;
+                    const orchStatus = event.metadata?.orchestrator_status;
+
+                    const statusClass = signal === 'DONE' ? 'done' :
+                        (signal === 'FAILED' || signal === 'NEED_INTERVENTION') ? 'failed' :
+                            (signal === 'STALLED' || signal === 'HOLD_FOR_HUMAN' || signal === 'NEED_INFO' || orchStatus === 'RUNNING' || orchStatus === 'STALLED') ? 'active' : '';
+
+                    return `
+                        <li class="step ${statusClass}">
+                            <i></i>
+                            <details>
+                                <summary>${event.node_id || 'System'}</summary>
+                                <div class="summary-content ${event.signal === 'FAILED' ? 'failure' : ''}">
+                                    ${event.summary || 'Executing...'}
+                                </div>
+                            </details>
+                        </li>
+                    `;
+                }).join('');
+
+                card.innerHTML = `
+                    <div class="worker-title">
+                        <h3>${bag.name.replace('_', ' ').toUpperCase()}</h3>
+                        <span class="worker-status" style="color: var(--${bag.status === 'RUNNING' ? 'warning' :
+                        bag.status === 'SUSPENDED' ? 'purple' :
+                            bag.status === 'STALLED' ? 'orange' :
+                                bag.status === 'FAILED' ? 'danger' :
+                                    bag.status === 'DONE' ? 'success' : 'text-dim'
+                    })">
+                            ${bag.status}
+                        </span>
+                    </div>
+                    ${activityHtml}
+                    <ul class="steps">
+                        ${stepsHtml}
+                    </ul>
+                `;
+                workerContainer.appendChild(card);
+            });
+
+            // Restore open <details> state
+            document.querySelectorAll('details').forEach(el => {
+                const summary = el.querySelector('summary');
+                if (summary && openDetails.has(summary.textContent.trim())) {
+                    el.open = true;
+                }
+            });
+        }
+
+        function setupChatInput() {
+            const input = document.querySelector('.chat-input-area input');
+            if (!input || input.dataset.listenerAttached) return;
+
+            input.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter' && input.value.trim() !== '') {
+                    const text = input.value.trim();
+                    input.value = ''; // clear immediately for UX
+
+                    try {
+                        let target = chatTarget.value;
+                        let textObj = target === 'SUPER' ? text : `[TO: ${target.toUpperCase()}] ${text}`;
+                        await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sender: 'HUMAN',
+                                text: textObj
+                            })
+                        });
+                        fetchSnapshot(); // immediately trigger a refresh
+                    } catch (error) {
+                        console.error('Error sending chat:', error);
+                    }
+                }
+            });
+            input.dataset.listenerAttached = 'true';
+        }
+
+        let lastChatLength = -1;
+        function renderChat(chatLogs) {
+            if (chatLogs.length === lastChatLength) return;
+            lastChatLength = chatLogs.length;
+
+            chatView.innerHTML = '';
+
+            // Strictly sort by timestamp to handle timezone mismatches between python naive datetimes and UTC 
+            let sortedLogs = [...chatLogs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+            // Render bottom 20 messages to prevent infinite scrolling
+            sortedLogs.slice(-20).forEach(log => {
+                const msg = document.createElement('div');
+
+                if (log.sender === 'HUMAN') {
+                    msg.className = 'msg text-warning';
+                } else if (log.sender === 'SUPER-ORCHESTRATOR') {
+                    msg.className = 'msg text-purple';
+                } else {
+                    msg.className = 'msg orchestrator';
+                }
+
+                const timestamp = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                msg.innerHTML = `
+                    <span class="msg-sender orch" style="color: inherit">${log.sender}</span>
+                    <span style="font-size: 0.7em; opacity: 0.7">[${timestamp}]</span> 
+                    ${log.text}
+                `;
+                chatView.appendChild(msg);
+            });
+            chatView.scrollTop = chatView.scrollHeight;
+        }
+
+        // --- Interactivity and Resizing handlers ---
+        function initResizers() {
+            function makeResizable(resizerId, sidebarId, isLeft) {
+                const resizer = document.getElementById(resizerId);
+                const sidebar = document.getElementById(sidebarId);
+                let isResizing = false;
+
+                resizer.addEventListener('mousedown', (e) => {
+                    isResizing = true;
+                    resizer.classList.add('resizing');
+                    document.body.style.cursor = 'col-resize';
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (!isResizing) return;
+                    if (isLeft) {
+                        const newWidth = e.clientX;
+                        if (newWidth > 200 && newWidth < Math.min(600, window.innerWidth / 2)) {
+                            sidebar.style.width = newWidth + 'px';
+                        }
+                    } else {
+                        const newWidth = document.body.clientWidth - e.clientX;
+                        if (newWidth > 200 && newWidth < Math.min(600, window.innerWidth / 2)) {
+                            sidebar.style.width = newWidth + 'px';
+                        }
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    if (isResizing) {
+                        isResizing = false;
+                        resizer.classList.remove('resizing');
+                        document.body.style.cursor = '';
+                    }
+                });
+            }
+
+            makeResizable('resizer-left', 'sidebar-left', true);
+            makeResizable('resizer-right', 'sidebar-right', false);
+        }
+
+        initResizers();
+        setInterval(fetchSnapshot, 1000);
+        fetchSnapshot();
+    </script>
 </body>
 
 </html>

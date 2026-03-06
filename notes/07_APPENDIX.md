@@ -186,3 +186,8 @@ Items introduced by the [12_clawoutput_spec.md](file:///Users/aaronrodrigues/pro
 - **Gap**: The versioning strategy (§7) references "a registered migration function" for backward compatibility. The registration mechanism, location (per-bag or global), and function signature are unspecified.
 - **Severity**: Low for v1 (only one version exists). Becomes critical before v2 ships.
 
+### 4.4 Document Versioning & Timestamps (v2)
+- **Gap**: F-REQ-15 mandates pointer-based state for artifacts, but currently pointers do not mandate version tags or lifecycle timestamps natively.
+- **Impact**: Without explicit `version` tags (e.g., v1.0, v2.1) and `last_modified` timestamps embedded in the pointer schema, retrospective audits cannot perfectly reconstruct the state of a document at a specific point in time if the underlying archive doesn't support implicit temporal queries.
+- **Decision Required**: For v2, the document pointer schema must be expanded to guarantee version and timestamp inclusion.
+

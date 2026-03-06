@@ -292,6 +292,27 @@ class SignalManager:
             nid for nid, state in self._node_states.items() if state.status == NodeStatus.RUNNING
         ]
 
+    @property
+    def overall_status(self) -> str:
+        """Calculate the aggregate status of the bag based on its nodes' states."""
+        if not self._node_states:
+            return "IDLE"
+            
+        states = [n.status for n in self._node_states.values()]
+        
+        if NodeStatus.RUNNING in states:
+            return NodeStatus.RUNNING.value
+        if NodeStatus.SUSPENDED in states:
+            return NodeStatus.SUSPENDED.value
+        if NodeStatus.STALLED in states:
+            return NodeStatus.STALLED.value
+        if NodeStatus.FAILED in states:
+            return NodeStatus.FAILED.value
+        if NodeStatus.DONE in states:
+            return NodeStatus.DONE.value
+            
+        return "IDLE"
+
     # -- Implicit Linkage Engine (Part 7.2) ---------------------------------
 
     def _compute_implicit_links(

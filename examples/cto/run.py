@@ -9,6 +9,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 
 # Import nodes to register them within the bags
 import nodes
+import server
+import time
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -43,32 +45,45 @@ def main():
     for bag in bags:
         print(f"Bag: {bag.name} ({len(bag.manager.manifest.nodes)} nodes)")
 
-    print("\n--- Cross-Domain Objective ---")
+    # Start HUD Server
+    server.set_tracked_bags(bags)
+    server.start_background_server(port=8000)
+    print("\n[HUD] Live Dashboard started at http://localhost:8000")
+    print("[HUD] Open this URL in your browser to see the real-time simulation.\n")
+
+    print("--- Cross-Domain Objective ---")
     objective = "Execute standard NDA submission package preparation."
     print(f"Goal: {objective}\n")
 
-    # We'll just run one of the bags for a quick orchestrator demonstration.
-    # In a full app, a Super-Orchestrator would spawn jobs across multiple bags.
-    demo_bag = nodes.clinical_reg_bag
+    # Simulation Script: Iterate through key bags to show activity on the HUD
+    active_sequence = [
+        (nodes.clinical_reg_bag, "Drafting initial protocols and IND shell."),
+        (nodes.cmc_reg_bag, "Analyzing batch stability and impurity drift."),
+        (nodes.clinical_ops_bag, "Syncing patient data and tracking adverse events."),
+        (nodes.reg_ops_bag, "Assembling eCTD submission sections.")
+    ]
 
-    print(f"\n[ORCHESTRATOR] Starting Job on {demo_bag.name}...")
-    state = demo_bag.start_job(objective=objective)
+    for bag, desc in active_sequence:
+        print(f"\n[ORCHESTRATOR] Activating Bag: {bag.name}")
+        print(f"[ORCHESTRATOR] {desc}")
+        
+        # We simulate the job running by calling start_job
+        # We add some sleeps so the user can see the cards change status in the HUD
+        time.sleep(2)
+        bag.start_job(objective=desc)
+        time.sleep(3)
 
     print("\n========================================")
-    print(" JOB COMPLETE")
+    print(" SIMULATION COMPLETE")
     print("========================================")
-    print(f"Final State Status: {'SUSPENDED' if state.get('suspended') else 'FINISHED'}")
+    print("The Dashboard is still live at http://localhost:8000")
+    print("Press Ctrl+C to terminate the server.\n")
 
-    print("\nPhase History:")
-    for h in state.get("phase_history", []):
-        print(f"  {h}")
-
-    print("\nFinal Output (from last node):")
-    output = state.get("current_output", {})
-    if output and output.get("continuation_context"):
-        print(output["continuation_context"].get("text", "N/A"))
-    else:
-        print("N/A")
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nShutting down Command Center.")
 
 
 if __name__ == "__main__":
