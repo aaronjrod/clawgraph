@@ -3,12 +3,16 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "clawgraph"
-version = "0.1.0"
-description = "Signal-based hierarchical agent orchestration built on LangGraph"
+name = "clawgraph-ai"
+version = "0.1.1"
+description = "The observable, AI-first orchestration library for self-healing workflows"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
+authors = [
+    {name = "Aaron Rodrigues", email = "aaronr@gatech.edu"}
+]
+urls = {Homepage = "https://github.com/aaronjrod/clawgraph", Repository = "https://github.com/aaronjrod/clawgraph"}
 dependencies = [
     "pydantic>=2.0",
     "langgraph>=0.2.0",

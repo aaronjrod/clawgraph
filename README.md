@@ -1,10 +1,24 @@
 # ClawGraph 👜
-### Hierarchical Agent Orchestration for High-Stakes Workflows
+
+[![PyPI version](https://badge.fury.io/py/clawgraph-ai.svg)](https://badge.fury.io/py/clawgraph-ai)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/clawgraph-ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://github.com/aaronjrod/clawgraph/actions/workflows/test.yml/badge.svg)](https://github.com/aaronjrod/clawgraph/actions/workflows/test.yml)
+
+### The observable, AI-first orchestration library for building and debugging self-healing workflows.
+
+Traditional multi-agent graphs are too rigid, while standard AI coders lack observability. **ClawGraph** is a lightweight library that bridges the gap. Designed natively for modern orchestrators (like OpenClaw and Claude Code), it empowers AI systems to construct, monitor, and auto-debug multi-step workflows while keeping humans securely in the loop.
 ---
 
 ![ClawGraph Command Center HUD](examples/cto/assets/hud_preview.png)
 
 ---
+
+## 📦 Installation
+
+```bash
+pip install clawgraph-ai
+```
 
 ## 🛑 The Problem: The "Complexity Wall"
 Most agentic systems fail as they scale. When a single agent or a simple chain tries to handle 50+ tools, complex reasoning, and long-running state, you encounter:
