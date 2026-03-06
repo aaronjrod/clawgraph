@@ -297,9 +297,9 @@ class SignalManager:
         """Calculate the aggregate status of the bag based on its nodes' states."""
         if not self._node_states:
             return "IDLE"
-            
+
         states = [n.status for n in self._node_states.values()]
-        
+
         if NodeStatus.RUNNING in states:
             return NodeStatus.RUNNING.value
         if NodeStatus.SUSPENDED in states:
@@ -310,7 +310,7 @@ class SignalManager:
             return NodeStatus.FAILED.value
         if NodeStatus.DONE in states:
             return NodeStatus.DONE.value
-            
+
         return "IDLE"
 
     # -- Implicit Linkage Engine (Part 7.2) ---------------------------------

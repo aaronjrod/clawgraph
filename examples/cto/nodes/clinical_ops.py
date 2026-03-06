@@ -148,7 +148,7 @@ def scribe_visit(state: dict) -> ClawOutput:
 def activate_sites(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "feasibility" not in archive:
-        return ClawOutput(signal=Signal.STALLED, node_id="site_activation", orchestrator_summary="Awaiting feasibility.")
+        return ClawOutput(signal=Signal.HOLD_FOR_HUMAN, node_id="site_activation", orchestrator_summary="Awaiting feasibility.")
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/site_activation_log.md")
     return ClawOutput(

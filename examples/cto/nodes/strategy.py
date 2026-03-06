@@ -1,4 +1,5 @@
 from clawgraph import ClawOutput, Signal, clawnode
+from clawgraph.core.models import HumanRequest
 
 
 @clawnode(
@@ -13,9 +14,10 @@ def assess_risk(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "clinical_data" not in archive:
         return ClawOutput(
-            signal=Signal.STALLED,
+            signal=Signal.HOLD_FOR_HUMAN,
             node_id="risk_assess",
             orchestrator_summary="Awaiting clinical endpoint data for risk quantification.",
+            human_request=HumanRequest(message="Awaiting clinical endpoint data for risk quantification."),
         )
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/risk_assessment.md")
@@ -38,9 +40,10 @@ def negotiate_label(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "preliminary_label" not in archive:
         return ClawOutput(
-            signal=Signal.STALLED,
+            signal=Signal.HOLD_FOR_HUMAN,
             node_id="label_negotiator",
             orchestrator_summary="Awaiting preliminary label drafting.",
+            human_request=HumanRequest(message="Awaiting preliminary label drafting."),
         )
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/label_negotiation.md")
@@ -63,9 +66,10 @@ def manage_ccds(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "safety_signals" not in archive:
         return ClawOutput(
-            signal=Signal.STALLED,
+            signal=Signal.HOLD_FOR_HUMAN,
             node_id="ccds_manager",
             orchestrator_summary="Awaiting global safety signal alignments.",
+            human_request=HumanRequest(message="Awaiting global safety signal alignments."),
         )
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/ccds.md")

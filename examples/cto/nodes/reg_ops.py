@@ -1,4 +1,5 @@
 from clawgraph import ClawOutput, Signal, clawnode
+from clawgraph.core.models import HumanRequest
 
 
 @clawnode(
@@ -13,9 +14,10 @@ def publish_ectd(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "source_docs" not in archive:
         return ClawOutput(
-            signal=Signal.STALLED,
+            signal=Signal.HOLD_FOR_HUMAN,
             node_id="ectd_publisher",
             orchestrator_summary="Awaiting source documents for eCTD synthesis.",
+            human_request=HumanRequest(message="Awaiting source documents for eCTD synthesis."),
         )
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/ectd_package.md")
@@ -38,9 +40,10 @@ def format_submission(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "unformatted_modules" not in archive:
         return ClawOutput(
-            signal=Signal.STALLED,
+            signal=Signal.HOLD_FOR_HUMAN,
             node_id="formatting",
             orchestrator_summary="Awaiting unformatted module drafts.",
+            human_request=HumanRequest(message="Awaiting unformatted module drafts."),
         )
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/formatting.md")
@@ -63,9 +66,10 @@ def coordinate_global(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "regional_clearance" not in archive:
         return ClawOutput(
-            signal=Signal.STALLED,
+            signal=Signal.HOLD_FOR_HUMAN,
             node_id="global_coord",
             orchestrator_summary="Awaiting regional dispatch clearance.",
+            human_request=HumanRequest(message="Awaiting regional dispatch clearance."),
         )
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/global_coord.md")
@@ -85,7 +89,7 @@ def coordinate_global(state: dict) -> ClawOutput:
 def publish_submission(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "submission_plan" not in archive:
-        return ClawOutput(signal=Signal.STALLED, node_id="submission_publisher", orchestrator_summary="Awaiting submission plan.")
+        return ClawOutput(signal=Signal.HOLD_FOR_HUMAN, node_id="submission_publisher", orchestrator_summary="Awaiting submission plan.")
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/ectd_sequence_0001.md")
     return ClawOutput(

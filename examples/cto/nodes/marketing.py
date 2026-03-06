@@ -1,4 +1,5 @@
 from clawgraph import ClawOutput, Signal, clawnode
+from clawgraph.core.models import HumanRequest
 
 
 @clawnode(
@@ -13,9 +14,10 @@ def write_pr(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "milestone_confirmation" not in archive:
         return ClawOutput(
-            signal=Signal.STALLED,
+            signal=Signal.HOLD_FOR_HUMAN,
             node_id="press_writer",
             orchestrator_summary="Awaiting regulatory milestone confirmation.",
+            human_request=HumanRequest(message="Awaiting regulatory milestone confirmation."),
         )
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/press_release.md")

@@ -66,7 +66,7 @@ def validate_process(state: dict) -> ClawOutput:
 def qc_batch(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "batch_record" not in archive:
-        return ClawOutput(signal=Signal.STALLED, node_id="manufacturing_qc", orchestrator_summary="Awaiting batch record.")
+        return ClawOutput(signal=Signal.HOLD_FOR_HUMAN, node_id="manufacturing_qc", orchestrator_summary="Awaiting batch record.")
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/manufacturing_batch_record_v1.md")
     return ClawOutput(
