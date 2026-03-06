@@ -53,7 +53,7 @@ def build_llm_node(node_id: str, system_prompt: str, bag: ClawBag) -> callable:
 
         try:
             logger.info(f"[{node_id}] Calling LLM...")
-            
+
             # Simulated delay to make the UI look cool
             import time
             time.sleep(2)
@@ -69,7 +69,7 @@ def build_llm_node(node_id: str, system_prompt: str, bag: ClawBag) -> callable:
             )
 
             text = response.text
-            
+
             # Clean up markdown blocks if the LLM adds them
             if "```json" in text:
                 text = text.split("```json")[1].split("```")[0].strip()
@@ -105,7 +105,7 @@ def build_llm_node(node_id: str, system_prompt: str, bag: ClawBag) -> callable:
             return ClawOutput(
                 signal=Signal.FAILED,
                 node_id=node_id,
-                orchestrator_summary=f"LLM Call failed: {str(e)}",
+                orchestrator_summary=f"LLM Call failed: {e!s}",
                 error_detail={
                     "failure_class": "SYSTEM_CRASH",
                     "message": str(e)

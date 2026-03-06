@@ -3,8 +3,8 @@ ClawGraph Expert Example: Clinical Trial Operations (CTO)
 Architecture: One Bag Per Specialist | One Node Per Task | Explicit Tool Authorization
 """
 
-from clawgraph import clawnode, ClawOutput, Signal, ClawBag
-from clawgraph.core.models import HumanRequest, ErrorDetail
+from clawgraph import ClawBag, ClawOutput, Signal, clawnode
+from clawgraph.core.models import HumanRequest
 
 # --- Bags ---
 clinical_reg_bag = ClawBag("clinical_regulatory")

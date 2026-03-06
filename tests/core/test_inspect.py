@@ -23,10 +23,11 @@ class TestInspectEvent:
                 node_id="producer",
                 orchestrator_summary="Produced data.",
                 result_uri="uri://data.csv",
+                audit_hint=True,
             )
 
         bag.manager.register_node(producer)
-        result = bag.start_job(
+        bag.start_job(
             objective="Inspect test.",
             thread_id="inspect-thread",
         )

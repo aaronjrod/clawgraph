@@ -4,7 +4,7 @@ Authorized for: All Specialists
 """
 
 class PDFParser:
-    def extract_text(self, file_uri: str, section: str = None) -> dict:
+    def extract_text(self, file_uri: str, section: str | None = None) -> dict:
         """Extract high-fidelity text and metadata from a PDF."""
         print(f"📄 [PDFParser] Extracting from: {file_uri} (Section: {section})")
         # Mock logic for NM5072 vs NM5082 check
