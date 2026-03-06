@@ -8,8 +8,9 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
@@ -35,9 +36,14 @@ jobs:
     - name: Test with pytest
       run: |
         pytest --cov=clawgraph --cov-report=term --cov-report=xml tests/
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+    - name: Generate Coverage Badge
+      if: matrix.python-version == '3.12'
+      uses: tj-actions/coverage-badge-py@v2
       with:
-        file: ./coverage.xml
-        fail_ci_if_error: false
-        token: ${{ secrets.CODECOV_TOKEN }}
+        output: coverage.svg
+    - name: Commit Coverage Badge
+      if: matrix.python-version == '3.12'
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "docs(coverage): update coverage badge"
+        file_pattern: coverage.svg
