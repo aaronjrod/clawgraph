@@ -192,10 +192,7 @@ def _make_dispatch_node(
         if node_meta and node_meta.requires:
             archive = state.get("document_archive", {})
             bag_name = state.get("bag_name", "")
-            missing = [
-                r for r in node_meta.requires
-                if not _is_visible(archive.get(r), bag_name)
-            ]
+            missing = [r for r in node_meta.requires if not _is_visible(archive.get(r), bag_name)]
             if missing:
                 # Gap 1 fix: Move to stalled_queue, NOT NEED_INTERVENTION.
                 signal_manager.mark_stalled(node_id)
@@ -209,11 +206,13 @@ def _make_dispatch_node(
 
                 # Emit STALLED event to in-state timeline.
                 timeline = list(state.get("timeline", []))
-                timeline.append({
-                    "node_id": node_id,
-                    "signal": "STALLED",
-                    "summary": f"Missing: {missing}",
-                })
+                timeline.append(
+                    {
+                        "node_id": node_id,
+                        "signal": "STALLED",
+                        "summary": f"Missing: {missing}",
+                    }
+                )
                 updates["timeline"] = timeline
 
                 # Synthesize a status event for the timeline, but don't
@@ -225,8 +224,7 @@ def _make_dispatch_node(
                         "signal": None,
                         "node_id": node_id,
                         "orchestrator_summary": (
-                            f"Node '{node_id}' stalled on {missing}. "
-                            f"Trying next ready node."
+                            f"Node '{node_id}' stalled on {missing}. Trying next ready node."
                         ),
                     }
                 else:
@@ -266,25 +264,21 @@ def _make_dispatch_node(
                 and result.signal not in contract.allowed_signals
             ):
                 logger.warning(
-                    "CONTRACT VIOLATION: node '%s' emitted %s, "
-                    "allowed: %s. Synthesizing FAILED.",
-                    node_id, result.signal.value,
+                    "CONTRACT VIOLATION: node '%s' emitted %s, allowed: %s. Synthesizing FAILED.",
+                    node_id,
+                    result.signal.value,
                     [s.value for s in contract.allowed_signals],
                 )
                 result = ClawOutput(
                     signal=Signal.FAILED,
                     node_id=node_id,
                     orchestrator_summary=(
-                        f"Contract violation: signal {result.signal.value} "
-                        f"not in allowed_signals."
+                        f"Contract violation: signal {result.signal.value} not in allowed_signals."
                     ),
                     orchestrator_synthesized=True,
                     error_detail=ErrorDetail(
                         failure_class=FailureClass.SCHEMA_MISMATCH,
-                        message=(
-                            f"Signal {result.signal.value} not permitted by "
-                            f"BagContract."
-                        ),
+                        message=(f"Signal {result.signal.value} not permitted by BagContract."),
                     ),
                 )
                 signal_manager.process_signal(result)
@@ -293,24 +287,20 @@ def _make_dispatch_node(
             # If node returns a mismatched node_id, synthesize NEED_INTERVENTION.
             if result.node_id != node_id:
                 logger.warning(
-                    "STATE DRIFT: node '%s' returned node_id='%s'. "
-                    "Synthesizing NEED_INTERVENTION.",
-                    node_id, result.node_id,
+                    "STATE DRIFT: node '%s' returned node_id='%s'. Synthesizing NEED_INTERVENTION.",
+                    node_id,
+                    result.node_id,
                 )
                 result = ClawOutput(
                     signal=Signal.NEED_INTERVENTION,
                     node_id=node_id,
                     orchestrator_summary=(
-                        f"State drift: dispatched '{node_id}' but got "
-                        f"node_id='{result.node_id}'."
+                        f"State drift: dispatched '{node_id}' but got node_id='{result.node_id}'."
                     ),
                     orchestrator_synthesized=True,
                     error_detail=ErrorDetail(
                         failure_class=FailureClass.SCHEMA_MISMATCH,
-                        message=(
-                            f"Expected node_id='{node_id}', "
-                            f"got '{result.node_id}'."
-                        ),
+                        message=(f"Expected node_id='{node_id}', got '{result.node_id}'."),
                     ),
                 )
                 signal_manager.process_signal(result)
@@ -341,7 +331,9 @@ def _make_dispatch_node(
 
                 # ── RESOLVING: re-evaluate stalled_queue ──────────
                 newly_ready, still_stalled = _resolve_stalled(
-                    stalled_queue, archive, bag_manager,
+                    stalled_queue,
+                    archive,
+                    bag_manager,
                     bag_name=state.get("bag_name", ""),
                 )
                 if newly_ready:
@@ -357,11 +349,13 @@ def _make_dispatch_node(
                     # Emit RESOLVING event to in-state timeline.
                     timeline = list(state.get("timeline", []))
                     timeline = list(updates.get("timeline", timeline))
-                    timeline.append({
-                        "node_id": node_id,
-                        "signal": "RESOLVING",
-                        "summary": f"Unblocked: {newly_ready}",
-                    })
+                    timeline.append(
+                        {
+                            "node_id": node_id,
+                            "signal": "RESOLVING",
+                            "summary": f"Unblocked: {newly_ready}",
+                        }
+                    )
                     updates["timeline"] = timeline
 
                 updates["stalled_queue"] = still_stalled
@@ -385,7 +379,9 @@ def _make_dispatch_node(
                     # PARTIAL+eager resolve (Appendix §1.9):
                     # Trigger stalled re-eval after eager commits.
                     newly_ready, still_stalled = _resolve_stalled(
-                        stalled_queue, archive, bag_manager,
+                        stalled_queue,
+                        archive,
+                        bag_manager,
                         bag_name=state.get("bag_name", ""),
                     )
                     if newly_ready:
@@ -394,11 +390,13 @@ def _make_dispatch_node(
                         updates["ready_queue"] = rq
                         timeline = list(state.get("timeline", []))
                         timeline = list(updates.get("timeline", timeline))
-                        timeline.append({
-                            "node_id": node_id,
-                            "signal": "RESOLVING",
-                            "summary": f"PARTIAL eager unblocked: {newly_ready}",
-                        })
+                        timeline.append(
+                            {
+                                "node_id": node_id,
+                                "signal": "RESOLVING",
+                                "summary": f"PARTIAL eager unblocked: {newly_ready}",
+                            }
+                        )
                         updates["timeline"] = timeline
                     updates["stalled_queue"] = still_stalled
 
@@ -417,7 +415,9 @@ def _make_dispatch_node(
                 # cascade any stalled consumers whose prereqs depend on it.
                 if result.signal == Signal.FAILED:
                     cascaded, surviving = _cascade_dead_ends(
-                        node_id, stalled_queue, bag_manager,
+                        node_id,
+                        stalled_queue,
+                        bag_manager,
                     )
                     if cascaded:
                         completed_nodes = list(
@@ -429,28 +429,35 @@ def _make_dispatch_node(
                         timeline = list(state.get("timeline", []))
                         timeline = list(updates.get("timeline", timeline))
                         for cid in cascaded:
-                            timeline.append({
-                                "node_id": cid,
-                                "signal": "DEAD_END",
-                                "summary": (
-                                    f"Cascaded: producer '{node_id}' FAILED"
-                                ),
-                            })
+                            timeline.append(
+                                {
+                                    "node_id": cid,
+                                    "signal": "DEAD_END",
+                                    "summary": (f"Cascaded: producer '{node_id}' FAILED"),
+                                }
+                            )
                         updates["timeline"] = timeline
                         logger.info(
                             "DEAD_END: %d node(s) cascaded from '%s' failure: %s",
-                            len(cascaded), node_id, cascaded,
+                            len(cascaded),
+                            node_id,
+                            cascaded,
                         )
                     updates["stalled_queue"] = surviving
 
                 # Gap 3: Track NEED_INFO retries.
                 if result.signal == Signal.NEED_INFO:
                     tracking = dict(state.get("need_info_tracking", {}))
-                    node_track = dict(tracking.get(node_id, {
-                        "retries": 0,
-                        "max_retries": 3,
-                        "first_seen": time.time(),
-                    }))
+                    node_track = dict(
+                        tracking.get(
+                            node_id,
+                            {
+                                "retries": 0,
+                                "max_retries": 3,
+                                "first_seen": time.time(),
+                            },
+                        )
+                    )
                     node_track["retries"] = node_track.get("retries", 0) + 1
                     tracking[node_id] = node_track
                     updates["need_info_tracking"] = tracking
@@ -484,11 +491,13 @@ def _make_dispatch_node(
             if should_audit:
                 timeline = list(state.get("timeline", []))
                 timeline = list(updates.get("timeline", timeline))
-                timeline.append({
-                    "node_id": node_id,
-                    "signal": "AUDIT_TRIGGERED",
-                    "summary": f"Audit triggered for '{node_id}'",
-                })
+                timeline.append(
+                    {
+                        "node_id": node_id,
+                        "signal": "AUDIT_TRIGGERED",
+                        "summary": f"Audit triggered for '{node_id}'",
+                    }
+                )
                 updates["timeline"] = timeline
 
         except Exception as exc:
@@ -505,9 +514,7 @@ def _make_dispatch_node(
                 failure_class=FailureClass.SYSTEM_CRASH,
                 tb=traceback.format_exc(),
             )
-            signal_manager.process_signal(
-                ClawOutput(**error_output)
-            )
+            signal_manager.process_signal(ClawOutput(**error_output))
 
             updates["current_output"] = error_output
             updates["pending_escalation"] = error_output
@@ -539,10 +546,7 @@ def _resolve_stalled(
             meta = None
 
         if meta and meta.requires:
-            missing = [
-                r for r in meta.requires
-                if not _is_visible(archive.get(r), bag_name)
-            ]
+            missing = [r for r in meta.requires if not _is_visible(archive.get(r), bag_name)]
             if missing:
                 still_stalled.append(node_id)
             else:

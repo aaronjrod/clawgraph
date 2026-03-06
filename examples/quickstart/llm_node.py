@@ -25,7 +25,7 @@ def build_llm_node(node_id: str, system_prompt: str, bag: ClawBag) -> callable:
                 orchestrator_summary="google-genai SDK or API key missing.",
                 error_detail={
                     "failure_class": "SYSTEM_ERROR",
-                    "message": "google-genai SDK or API key missing."
+                    "message": "google-genai SDK or API key missing.",
                 },
             )
 
@@ -56,6 +56,7 @@ def build_llm_node(node_id: str, system_prompt: str, bag: ClawBag) -> callable:
 
             # Simulated delay to make the UI look cool
             import time
+
             time.sleep(2)
 
             response = client.models.generate_content(
@@ -93,7 +94,7 @@ def build_llm_node(node_id: str, system_prompt: str, bag: ClawBag) -> callable:
             if sig == Signal.FAILED:
                 output_kwargs["error_detail"] = {
                     "failure_class": "LLM_FAILURE",
-                    "message": data.get("result", "LLM explicitly opted to fail.")
+                    "message": data.get("result", "LLM explicitly opted to fail."),
                 }
             elif sig == Signal.DONE:
                 output_kwargs["result_uri"] = f"uri://live_demo/{node_id}_output.txt"
@@ -106,10 +107,7 @@ def build_llm_node(node_id: str, system_prompt: str, bag: ClawBag) -> callable:
                 signal=Signal.FAILED,
                 node_id=node_id,
                 orchestrator_summary=f"LLM Call failed: {e!s}",
-                error_detail={
-                    "failure_class": "SYSTEM_CRASH",
-                    "message": str(e)
-                },
+                error_detail={"failure_class": "SYSTEM_CRASH", "message": str(e)},
             )
 
     # Register the dynamically created node to the bag

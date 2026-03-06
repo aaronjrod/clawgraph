@@ -1,6 +1,5 @@
 """Audit gap TDD tests -- Gaps 2, 3, 4, 5."""
 
-
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import (
     AggregatorOutput,
@@ -162,9 +161,7 @@ class TestGap5MultiDomainTagVisibility:
 
         bag.manager.register_node(consumer_node)
 
-        dispatch = _make_dispatch_node(
-            bag_manager=bag.manager, signal_manager=bag.signal_manager
-        )
+        dispatch = _make_dispatch_node(bag_manager=bag.manager, signal_manager=bag.signal_manager)
 
         # State with a document from another domain, not tagged public.
         state: BagState = {  # type: ignore[typeddict-item]

@@ -164,31 +164,22 @@ class ClawOutput(BaseModel):
         if self.signal == Signal.PARTIAL:
             if self.result_uri is None:
                 raise ValueError(
-                    "PARTIAL signal requires result_uri "
-                    "(partial artifacts must be committed)."
+                    "PARTIAL signal requires result_uri (partial artifacts must be committed)."
                 )
             if self.error_detail is None:
                 raise ValueError("PARTIAL signal requires error_detail.")
 
         if self.signal == Signal.DONE and self.result_uri is None:
-            raise ValueError(
-                "DONE signal requires result_uri "
-                "(what did the node produce?)."
-            )
+            raise ValueError("DONE signal requires result_uri (what did the node produce?).")
 
         if self.signal == Signal.NEED_INFO and self.info_request is None:
             raise ValueError("NEED_INFO signal requires info_request payload.")
 
         if self.signal == Signal.HOLD_FOR_HUMAN and self.human_request is None:
-            raise ValueError(
-                "HOLD_FOR_HUMAN signal requires human_request payload."
-            )
+            raise ValueError("HOLD_FOR_HUMAN signal requires human_request payload.")
 
         if self.signal == Signal.NEED_INTERVENTION and self.error_detail is None:
-            raise ValueError(
-                "NEED_INTERVENTION signal requires error_detail "
-                "(what drifted?)."
-            )
+            raise ValueError("NEED_INTERVENTION signal requires error_detail (what drifted?).")
 
         return self
 
@@ -212,7 +203,5 @@ class AggregatorOutput(ClawOutput):
     def validate_aggregator_requirements(self) -> AggregatorOutput:
         """Aggregators must report at least one branch result."""
         if not self.branch_breakdown:
-            raise ValueError(
-                "AggregatorOutput requires at least one BranchResult."
-            )
+            raise ValueError("AggregatorOutput requires at least one BranchResult.")
         return self

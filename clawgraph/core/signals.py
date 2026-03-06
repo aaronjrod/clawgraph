@@ -244,19 +244,23 @@ class SignalManager:
             nodes.append(node_entry)
 
             # Topology link: orchestrator -> node.
-            links.append({
-                "source": "orchestrator",
-                "target": node_id,
-                "type": "topology",
-            })
+            links.append(
+                {
+                    "source": "orchestrator",
+                    "target": node_id,
+                    "type": "topology",
+                }
+            )
 
             # Data flow links from implicit linkage.
             for source_id in implicit:
-                links.append({
-                    "source": source_id,
-                    "target": node_id,
-                    "type": "data_flow",
-                })
+                links.append(
+                    {
+                        "source": source_id,
+                        "target": node_id,
+                        "type": "data_flow",
+                    }
+                )
 
         return {
             "thread_id": thread_id,
@@ -285,9 +289,7 @@ class SignalManager:
     def active_nodes(self) -> list[str]:
         """Node IDs currently in RUNNING status."""
         return [
-            nid
-            for nid, state in self._node_states.items()
-            if state.status == NodeStatus.RUNNING
+            nid for nid, state in self._node_states.items() if state.status == NodeStatus.RUNNING
         ]
 
     # -- Implicit Linkage Engine (Part 7.2) ---------------------------------

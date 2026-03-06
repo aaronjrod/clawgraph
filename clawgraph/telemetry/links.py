@@ -38,10 +38,12 @@ def compute_implicit_links(
         for req in requires:
             producer_id = producer_map.get(req)
             if producer_id and producer_id != node_id:
-                links.append({
-                    "source": producer_id,
-                    "target": node_id,
-                    "type": "data_flow",
-                })
+                links.append(
+                    {
+                        "source": producer_id,
+                        "target": node_id,
+                        "type": "data_flow",
+                    }
+                )
 
     return links

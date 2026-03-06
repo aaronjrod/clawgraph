@@ -22,18 +22,20 @@ def build_so_prompt(
         The complete system prompt string.
     """
     bags = bag_names or []
-    return "\n\n".join([
-        _section_identity(bags),
-        _section_discovery_first(),
-        _section_context_discipline(),
-        _section_stalemate_resolution(),
-        _section_node_design_principles(),
-        _section_signal_decision_tree(),
-        _section_hitl_handler(),
-        _section_cold_start(),
-        _section_bag_repair(),
-        _section_guardrails(),
-    ])
+    return "\n\n".join(
+        [
+            _section_identity(bags),
+            _section_discovery_first(),
+            _section_context_discipline(),
+            _section_stalemate_resolution(),
+            _section_node_design_principles(),
+            _section_signal_decision_tree(),
+            _section_hitl_handler(),
+            _section_cold_start(),
+            _section_bag_repair(),
+            _section_guardrails(),
+        ]
+    )
 
 
 # ── Prompt Sections ──────────────────────────────────────────────────────────

@@ -161,9 +161,7 @@ class BagManager:
         self._check_locked()
 
         if node_id not in self._manifest.nodes:
-            raise KeyError(
-                f"Node '{node_id}' not found in bag '{self.name}'."
-            )
+            raise KeyError(f"Node '{node_id}' not found in bag '{self.name}'.")
 
         if node_fn is not None:
             self._node_fns[node_id] = node_fn
@@ -203,9 +201,7 @@ class BagManager:
         self._check_locked()
 
         if node_id not in self._manifest.nodes:
-            raise KeyError(
-                f"Node '{node_id}' not found in bag '{self.name}'."
-            )
+            raise KeyError(f"Node '{node_id}' not found in bag '{self.name}'.")
 
         removed = self._manifest.nodes.pop(node_id)
         self._node_fns.pop(node_id, None)
@@ -222,9 +218,7 @@ class BagManager:
     def get_node_fn(self, node_id: str) -> Callable[..., Any]:
         """Retrieve a node's function by ID (Tier 2 access)."""
         if node_id not in self._node_fns:
-            raise KeyError(
-                f"Node function '{node_id}' not found in bag '{self.name}'."
-            )
+            raise KeyError(f"Node function '{node_id}' not found in bag '{self.name}'.")
         return self._node_fns[node_id]
 
     # ── Inventory ──────────────────────────────────────────────────
@@ -269,9 +263,7 @@ class BagManager:
             KeyError: If node_id doesn't exist.
         """
         if node_id not in self._manifest.nodes:
-            raise KeyError(
-                f"Node '{node_id}' not found in bag '{self.name}'."
-            )
+            raise KeyError(f"Node '{node_id}' not found in bag '{self.name}'.")
 
         meta = self._manifest.nodes[node_id]
         node_fn = self._node_fns.get(node_id)
@@ -375,8 +367,4 @@ class BagManager:
         return node_id in self._manifest.nodes
 
     def __repr__(self) -> str:
-        return (
-            f"BagManager(name='{self.name}', "
-            f"version={self.version}, "
-            f"nodes={len(self)})"
-        )
+        return f"BagManager(name='{self.name}', version={self.version}, nodes={len(self)})"

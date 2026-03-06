@@ -91,8 +91,7 @@ def clawnode(
             # Schema enforcement: the node MUST return a ClawOutput.
             if not isinstance(result, ClawOutput):
                 raise TypeError(
-                    f"ClawNode '{id}' must return a ClawOutput, "
-                    f"got {type(result).__name__}."
+                    f"ClawNode '{id}' must return a ClawOutput, got {type(result).__name__}."
                 )
             return result
 

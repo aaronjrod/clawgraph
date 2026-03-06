@@ -14,9 +14,12 @@ from server import set_active_bag, start_background_server
 
 from clawgraph import ClawBag
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 load_dotenv()
+
 
 def main():
     if not os.getenv("GEMINI_API_KEY"):
@@ -35,19 +38,19 @@ def main():
     build_llm_node(
         "researcher",
         "You are an expert researcher. Break down the objective into clear facts and find preliminary answers. You should always conclude with the DONE signal once you've provided the initial research.",
-        bag
+        bag,
     )
 
     build_llm_node(
         "analyzer",
         "You are an expert data analyzer. Take the preliminary research and synthesize it into a strategic 3-point plan. Only output a DONE signal when your plan is solid.",
-        bag
+        bag,
     )
 
     build_llm_node(
         "writer",
         "You an expert technical writer. Take the strategy and facts and write a beautifully formatted markdown report.",
-        bag
+        bag,
     )
 
     # Hook the active bag to our live server singleton
@@ -59,6 +62,7 @@ def main():
     print("--> Open http://127.0.0.1:8000 in your browser to watch the execution live!\n")
 
     import time
+
     print("Waiting 3 seconds for you to open the browser... 3")
     time.sleep(1)
     print("2")
@@ -78,20 +82,23 @@ def main():
     print("========================================")
     print(f"Final State Status: {'SUSPENDED' if state.get('suspended') else 'FINISHED'}")
     print("\nPhase History:")
-    for h in state.get('phase_history', []):
+    for h in state.get("phase_history", []):
         print(f"  {h}")
 
     print("\nFinal Output (from last node):")
-    output = state.get('current_output', {})
-    if output and output.get('continuation_context'):
-        print(output['continuation_context'].get('text', 'N/A'))
+    output = state.get("current_output", {})
+    if output and output.get("continuation_context"):
+        print(output["continuation_context"].get("text", "N/A"))
     else:
-        print('N/A')
+        print("N/A")
 
     # Keep server alive a bit more so user can see final payload on screen
-    print("\n--> Keeping server alive for 30 seconds to view final HUD state. Press Ctrl+C to exit.")
+    print(
+        "\n--> Keeping server alive for 30 seconds to view final HUD state. Press Ctrl+C to exit."
+    )
     with contextlib.suppress(KeyboardInterrupt):
         time.sleep(30)
+
 
 if __name__ == "__main__":
     main()

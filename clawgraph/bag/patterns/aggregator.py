@@ -76,11 +76,13 @@ class AggregatorBuilder:
         fn: Callable[..., ClawOutput],
     ) -> None:
         """Register a branch function to run in the fan-out."""
-        self._branches.append(BranchSpec(
-            branch_id=branch_id,
-            node_id=node_id,
-            fn=fn,
-        ))
+        self._branches.append(
+            BranchSpec(
+                branch_id=branch_id,
+                node_id=node_id,
+                fn=fn,
+            )
+        )
 
     def run(self, state: dict[str, Any] | None = None) -> AggregationResult:
         """Execute all branches and aggregate into a single AggregatorOutput.
@@ -109,20 +111,21 @@ class AggregatorBuilder:
                 )
 
             branch_outputs.append(output)
-            branch_results.append(BranchResult(
-                branch_id=spec.branch_id,
-                node_id=spec.node_id,
-                signal=output.signal,
-                summary=output.orchestrator_summary,
-                result_uri=output.result_uri,
-                error_detail=output.error_detail,
-            ))
+            branch_results.append(
+                BranchResult(
+                    branch_id=spec.branch_id,
+                    node_id=spec.node_id,
+                    signal=output.signal,
+                    summary=output.orchestrator_summary,
+                    result_uri=output.result_uri,
+                    error_detail=output.error_detail,
+                )
+            )
 
         # Merge semantics.
         done_count = sum(1 for o in branch_outputs if o.signal == Signal.DONE)
         fail_count = sum(
-            1 for o in branch_outputs
-            if o.signal in (Signal.FAILED, Signal.NEED_INTERVENTION)
+            1 for o in branch_outputs if o.signal in (Signal.FAILED, Signal.NEED_INTERVENTION)
         )
         total = len(branch_outputs)
 
@@ -142,10 +145,7 @@ class AggregatorBuilder:
         else:
             # Mixed results -> PARTIAL.
             merged_signal = Signal.PARTIAL
-            summary = (
-                f"Mixed results: {done_count}/{total} passed, "
-                f"{fail_count}/{total} failed."
-            )
+            summary = f"Mixed results: {done_count}/{total} passed, {fail_count}/{total} failed."
             error = ErrorDetail(
                 failure_class=FailureClass.LOGIC_ERROR,
                 message=f"{fail_count} branch(es) failed out of {total}.",
@@ -153,8 +153,10 @@ class AggregatorBuilder:
 
         # Build the result URI from successful branches.
         result_uris = [o.result_uri for o in branch_outputs if o.result_uri]
-        result_uri = result_uris[0] if len(result_uris) == 1 else (
-            f"uri://aggregated/{self.aggregator_id}" if result_uris else None
+        result_uri = (
+            result_uris[0]
+            if len(result_uris) == 1
+            else (f"uri://aggregated/{self.aggregator_id}" if result_uris else None)
         )
 
         # PARTIAL and DONE require result_uri.

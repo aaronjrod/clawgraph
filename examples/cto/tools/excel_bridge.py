@@ -3,6 +3,7 @@ ClawGraph Tool Mock: Excel Bridge
 Authorized for: CMC, Patient Ops
 """
 
+
 class ExcelBridge:
     def pull_sheet(self, file_uri: str) -> list:
         """Retrieve daily dosing or stability sheets."""

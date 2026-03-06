@@ -3,6 +3,7 @@ ClawGraph Tool Mock: Gmail API
 Authorized for: Patient Ops
 """
 
+
 class GmailAPI:
     def send_alert(self, recipient: str, subject: str, body: str):
         """Send a guarded email alert."""

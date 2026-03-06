@@ -177,7 +177,8 @@ class TestClawBagExecution:
         # 2. consumer_node must have entered the STALLED queue at some point.
         timeline = result.get("timeline", [])
         stall_events = [
-            e for e in timeline
+            e
+            for e in timeline
             if e.get("node_id") == "consumer_node" and e.get("signal") == "STALLED"
         ]
         assert len(stall_events) >= 1, (
@@ -194,8 +195,7 @@ class TestClawBagExecution:
         archive = result.get("document_archive", {})
 
         assert "producer_node_result" in archive, (
-            "Archive key convention check: producer_node should write to "
-            "'producer_node_result'."
+            "Archive key convention check: producer_node should write to 'producer_node_result'."
         )
 
         assert "consumer_node_result" in archive, (

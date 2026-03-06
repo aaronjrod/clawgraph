@@ -10,7 +10,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 # Import nodes to register them within the bags
 import nodes
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
 
 def main():
     print("========================================")
@@ -24,7 +27,7 @@ def main():
         nodes.clinical_ops_bag,
         nodes.reg_ops_bag,
         nodes.strategy_labeling_bag,
-        nodes.marketing_bag
+        nodes.marketing_bag,
     ]
 
     # Dynamically register all decorated nodes to their respective bags
@@ -57,15 +60,16 @@ def main():
     print(f"Final State Status: {'SUSPENDED' if state.get('suspended') else 'FINISHED'}")
 
     print("\nPhase History:")
-    for h in state.get('phase_history', []):
+    for h in state.get("phase_history", []):
         print(f"  {h}")
 
     print("\nFinal Output (from last node):")
-    output = state.get('current_output', {})
-    if output and output.get('continuation_context'):
-        print(output['continuation_context'].get('text', 'N/A'))
+    output = state.get("current_output", {})
+    if output and output.get("continuation_context"):
+        print(output["continuation_context"].get("text", "N/A"))
     else:
-        print('N/A')
+        print("N/A")
+
 
 if __name__ == "__main__":
     main()
