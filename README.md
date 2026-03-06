@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/clawgraph-ai.svg)](https://badge.fury.io/py/clawgraph-ai)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/clawgraph-ai)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://github.com/aaronjrod/clawgraph/actions/workflows/test.yml/badge.svg)](https://github.com/aaronjrod/clawgraph/actions/workflows/test.yml)
 
 ### The observable, AI-first orchestration library for building and debugging self-healing workflows.

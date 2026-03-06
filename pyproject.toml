@@ -8,7 +8,7 @@ version = "0.1.1"
 description = "The observable, AI-first orchestration library for self-healing workflows"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 authors = [
     {name = "Aaron Rodrigues", email = "aaronr@gatech.edu"}
 ]
@@ -17,7 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
 ]
 dependencies = [
     "pydantic>=2.0",
