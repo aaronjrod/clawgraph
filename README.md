@@ -4,6 +4,7 @@
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/clawgraph-ai)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://github.com/aaronjrod/clawgraph/actions/workflows/test.yml/badge.svg)](https://github.com/aaronjrod/clawgraph/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/aaronjrod/clawgraph/graph/badge.svg?token=YOUR_TOKEN)](https://codecov.io/gh/aaronjrod/clawgraph)
 
 ### The observable, AI-first orchestration library for building and debugging self-healing workflows.
 
