@@ -42,9 +42,9 @@ jobs:
     - name: Generate Coverage Badge
       if: matrix.python-version == '3.12'
       run: |
-        uv run python -m coverage json
-        COVERAGE=$(uv run python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
-        COLOR=$(uv run python -c "c=int('$COVERAGE'); print('4c1' if c>=90 else 'dfb317' if c>=80 else 'e05d44')")
+        python -m coverage json
+        COVERAGE=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+        COLOR=$(python -c "c=int('$COVERAGE'); print('4c1' if c>=90 else 'dfb317' if c>=80 else 'e05d44')")
         cat <<EOF > coverage.svg
         <svg xmlns="http://www.w3.org/2000/svg" width="104" height="20">
           <linearGradient id="b" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
