@@ -1,5 +1,6 @@
 from clawgraph import ClawOutput, Signal, clawnode
 
+
 @clawnode(
     id="press_writer",
     description="Drafts press releases for regulatory milestones.",

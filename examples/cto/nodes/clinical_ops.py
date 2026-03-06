@@ -1,6 +1,7 @@
 from clawgraph import ClawOutput, Signal, clawnode
 from clawgraph.core.models import HumanRequest
 
+
 @clawnode(
     id="patient_sync",
     description="Daily patient tracking and timezone synchronization.",

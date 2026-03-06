@@ -8,9 +8,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 
 
 # Import nodes to register them within the bags
+import time
+
 import nodes
 import server
-import time
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -66,7 +67,7 @@ def main():
     for bag, desc in active_sequence:
         print(f"\n[ORCHESTRATOR] Activating Bag: {bag.name}")
         print(f"[ORCHESTRATOR] {desc}")
-        
+
         # We simulate the job running by calling start_job
         # We add some sleeps so the user can see the cards change status in the HUD
         time.sleep(2)

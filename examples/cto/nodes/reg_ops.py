@@ -1,5 +1,6 @@
 from clawgraph import ClawOutput, Signal, clawnode
 
+
 @clawnode(
     id="ectd_publisher",
     description="Generates and validates eCTD submission packages.",

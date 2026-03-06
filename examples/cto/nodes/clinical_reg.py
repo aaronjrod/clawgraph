@@ -1,6 +1,7 @@
 from clawgraph import ClawOutput, Signal, clawnode
-from clawgraph.core.models import HumanRequest
 from clawgraph.bag.patterns import DocumentNode
+from clawgraph.core.models import HumanRequest
+
 
 @clawnode(
     id="manage_ind_submission",
@@ -14,7 +15,7 @@ def manage_ind_submission(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/ind-package-v1.md")
-    
+
     if "protocol_v1" not in archive:
         return dn.create(
             uri=f"file://{abs_path}",
@@ -98,7 +99,7 @@ def coordinate_fda_response(state: dict) -> ClawOutput:
                 target="USER"
             )
         )
-        
+
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/fda_response_v1.md")
     return ClawOutput(

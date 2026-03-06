@@ -2,7 +2,7 @@ import inspect
 import logging
 import os
 import sys
-import threading
+
 import requests
 
 # Add parent dir to path so clawgraph modules load

@@ -1,5 +1,6 @@
 from clawgraph import ClawOutput, Signal, clawnode
 
+
 @clawnode(
     id="risk_assess",
     description="Assesses market risk for regulatory strategy.",

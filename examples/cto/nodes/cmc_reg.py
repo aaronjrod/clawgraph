@@ -1,5 +1,6 @@
 from clawgraph import ClawOutput, Signal, clawnode
-from clawgraph.bag.patterns import VerificationNode, CheckResult
+from clawgraph.bag.patterns import CheckResult, VerificationNode
+
 
 @clawnode(
     id="manage_stability",
@@ -14,7 +15,7 @@ def manage_stability(state: dict) -> ClawOutput:
         CheckResult(name="Impurity A limit check", passed=True, expected="< 0.05%", actual="0.045%"),
         CheckResult(name="Impurity B limit check", passed=False, expected="< 0.10% (safe margin)", actual="0.098%", message="Drifting near upper control limit.")
     ]
-    
+
     import os
     abs_path = os.path.abspath("examples/cto/artifacts/generated/stability-assessment-q1.md")
     return vn.evaluate(

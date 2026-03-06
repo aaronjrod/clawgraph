@@ -1,15 +1,17 @@
+import contextlib
+import json
+import os
 import threading
 import time
+from datetime import UTC, datetime
 from typing import Any
+
 import uvicorn
-from fastapi import FastAPI, BackgroundTasks, Request
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from pydantic.json import pydantic_encoder
-import json
-from datetime import datetime, timezone
-import os
 
 app = FastAPI()
 
@@ -53,12 +55,12 @@ def get_snapshot() -> JSONResponse:
         "bags": [],
         "documents": {}
     }
-    
+
     for bag in _TRACKED_BAGS:
         # Get the standard HUD snapshot for this bag
         bag_snap = bag.get_hud_snapshot()
                 # Collect any documents associated with this bag
-        for node_id, uri in bag.signal_manager._result_uris.items():
+        for _node_id, uri in bag.signal_manager._result_uris.items():
             if uri not in snapshot_data["documents"]:
                 # Create synthesized versioning metadata natively
                 snapshot_data["documents"][uri] = {
@@ -66,8 +68,8 @@ def get_snapshot() -> JSONResponse:
                     "domain": bag.name,
                     "owner_node": None,
                     "version": "v1.0",
-                    "last_modified": datetime.now(timezone.utc).isoformat()
-                }          
+                    "last_modified": datetime.now(UTC).isoformat()
+                }
         # Extract precise status using library enums
         bag_status = bag.signal_manager.overall_status
         thread_id = bag.signal_manager._active_thread_id
@@ -81,7 +83,7 @@ def get_snapshot() -> JSONResponse:
                     "signal": e.signal.value if e.signal else None,
                     "summary": e.summary,
                     "metadata": e.metadata,
-                    "timestamp": e.timestamp.isoformat() if e.timestamp else datetime.now(timezone.utc).isoformat()
+                    "timestamp": e.timestamp.isoformat() if e.timestamp else datetime.now(UTC).isoformat()
                 })
 
         snapshot_data["bags"].append({
@@ -90,27 +92,25 @@ def get_snapshot() -> JSONResponse:
             "nodes": bag_snap["nodes"],
             "timeline": raw_events
         })
-        
+
     # Merge global chat logs and bag timeline events into one chronologically sorted chat log
     unified_chat = list(_CHAT_LOGS)
-    
+
     for bag_data in snapshot_data["bags"]:
         for event in bag_data["timeline"]:
             # Synthesize an event dict that looks like a chat message for sorting
             unified_chat.append({
                 "sender": "ORCHESTRATOR",
                 "text": f"[{bag_data['name'].upper()}] {event['summary']}",
-                "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
+                "timestamp": event.get("timestamp", datetime.now(UTC).isoformat()),
                 "signal": event.get("signal"),
                 "node_id": event.get("node_id"),
                 "metadata": event.get("metadata", {})
             })
-            
+
     # Sort unified chat by timestamp if available
-    try:
+    with contextlib.suppress(Exception):
         unified_chat.sort(key=lambda x: x.get("timestamp", ""))
-    except Exception:
-        pass # Fallback if timestamps are missing/malformed
 
     snapshot_data["chat_log"] = unified_chat
 
@@ -121,7 +121,7 @@ def get_snapshot() -> JSONResponse:
 @app.post("/api/chat")
 def post_chat(msg: ChatMessage):
     """Allows Human or Super-Orchestrator to inject messages into the timeline HUD."""
-    timestamp = msg.timestamp or datetime.now(timezone.utc).isoformat()
+    timestamp = msg.timestamp or datetime.now(UTC).isoformat()
     # Accept standard message
     log_entry = {
         "sender": msg.sender.upper(),
@@ -129,7 +129,7 @@ def post_chat(msg: ChatMessage):
         "timestamp": timestamp
     }
     _CHAT_LOGS.append(log_entry)
-    
+
     # If the sender is human/architect, we log it to console as well
     print(f"\n[{log_entry['sender']}] {log_entry['text']}\n")
     return {"status": "ok"}
@@ -138,12 +138,12 @@ def post_chat(msg: ChatMessage):
 def get_document(doc_uri: str):
     """Retrieves the raw content of a document by its URI for HUD previews."""
     content = f"# Mock Content for {doc_uri}\n\nThis is a synthesized preview of the artifact."
-    
+
     # Check if it's a local file mapped in our artifacts folder
     if doc_uri.startswith("file://"):
         filepath = doc_uri.replace("file://", "")
         if os.path.exists(filepath):
-            with open(filepath, "r") as f:
+            with open(filepath) as f:
                 content = f.read()
                 return {"uri": doc_uri, "content": content}
 
