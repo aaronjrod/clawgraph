@@ -288,4 +288,3 @@ class TestRollback:
         bag.lock()
         with pytest.raises(ManifestLockedError):
             bag.rollback_bag(version=0)
-

@@ -180,9 +180,7 @@ class ClawBag:
 
     # ── HITL Handler ──────────────────────────────────────────────
 
-    def register_hitl_handler(
-        self, handler: Callable[..., Any]
-    ) -> None:
+    def register_hitl_handler(self, handler: Callable[..., Any]) -> None:
         """Register a delivery mechanism for HOLD_FOR_HUMAN signals.
 
         The handler is called with (thread_id: str, human_request: dict)
@@ -283,9 +281,7 @@ class ClawBag:
             if missing:
                 from clawgraph.core.exceptions import BagContractError
 
-                raise BagContractError(
-                    f"Missing required inputs: {missing}"
-                )
+                raise BagContractError(f"Missing required inputs: {missing}")
 
         # Compile if needed.
         self.compile_graph_if_dirty()
@@ -307,7 +303,10 @@ class ClawBag:
         for key, val in raw_inputs.items():
             if isinstance(val, str):
                 archive[key] = ArchiveEntry(
-                    uri=val, domain=self._name, tags=["public"], created_by="input",
+                    uri=val,
+                    domain=self._name,
+                    tags=["public"],
+                    created_by="input",
                 ).model_dump()
             else:
                 archive[key] = val  # Already an ArchiveEntry dict.
@@ -318,17 +317,16 @@ class ClawBag:
         initial_timeline: list[dict[str, Any]] = []
         for nid, meta in inventory.get("nodes", {}).items():
             requires = meta.get("requires") or []
-            missing = [
-                r for r in requires
-                if not _entry_visible(archive.get(r), self._name)
-            ]
+            missing = [r for r in requires if not _entry_visible(archive.get(r), self._name)]
             if missing:
                 stalled.append(nid)
-                initial_timeline.append({
-                    "node_id": nid,
-                    "signal": "STALLED",
-                    "summary": f"Missing: {missing}",
-                })
+                initial_timeline.append(
+                    {
+                        "node_id": nid,
+                        "signal": "STALLED",
+                        "summary": f"Missing: {missing}",
+                    }
+                )
             else:
                 ready.append(nid)
 
@@ -533,7 +531,8 @@ class ClawBag:
         }
         logger.info(
             "inject_info: answer injected for '%s' on thread '%s'.",
-            node_id, thread_id,
+            node_id,
+            thread_id,
         )
         return state
 

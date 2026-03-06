@@ -3,6 +3,7 @@ ClawGraph Tool Mock: Google Search
 Authorized for: Regulatory, Patient Ops
 """
 
+
 class GoogleSearch:
     def search(self, query: str) -> str:
         """Perform a real-time internet search."""

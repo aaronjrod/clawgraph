@@ -31,7 +31,13 @@ class TestSignalEnum:
 class TestFailureClassEnum:
     def test_all_classes_exist(self):
         assert len(FailureClass) == 5
-        expected = {"LOGIC_ERROR", "SCHEMA_MISMATCH", "TOOL_FAILURE", "GUARDRAIL_VIOLATION", "SYSTEM_CRASH"}
+        expected = {
+            "LOGIC_ERROR",
+            "SCHEMA_MISMATCH",
+            "TOOL_FAILURE",
+            "GUARDRAIL_VIOLATION",
+            "SYSTEM_CRASH",
+        }
         assert {f.value for f in FailureClass} == expected
 
 
@@ -174,10 +180,7 @@ class TestClawOutputValidators:
                 node_id="n",
                 orchestrator_summary="Partial.",
                 # Missing result_uri
-                error_detail=ErrorDetail(
-                    failure_class=FailureClass.LOGIC_ERROR,
-                    message="foo"
-                )
+                error_detail=ErrorDetail(failure_class=FailureClass.LOGIC_ERROR, message="foo"),
             )
 
     def test_partial_requires_error_detail(self):

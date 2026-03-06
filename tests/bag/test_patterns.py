@@ -130,6 +130,7 @@ def _branch_done(state: dict) -> ClawOutput:
 
 def _branch_failed(state: dict) -> ClawOutput:
     from clawgraph.core.models import ErrorDetail, FailureClass
+
     return ClawOutput(
         signal=Signal.FAILED,
         node_id="branch_fail",
@@ -183,10 +184,7 @@ class TestAggregatorBuilder:
         result = ab.run()
 
         assert result.output.signal == Signal.PARTIAL
-        crash_branch = next(
-            br for br in result.output.branch_breakdown
-            if br.branch_id == "b2"
-        )
+        crash_branch = next(br for br in result.output.branch_breakdown if br.branch_id == "b2")
         assert crash_branch.signal == Signal.FAILED
         assert crash_branch.error_detail is not None
         assert crash_branch.error_detail.failure_class == FailureClass.SYSTEM_CRASH

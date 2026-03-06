@@ -3,6 +3,7 @@ ClawGraph Tool Mock: Notary Log (Audit Ledger)
 Authorized for: Lead Architect, Global
 """
 
+
 class NotaryLog:
     def log_integrity_check(self, batch_id: str, status: str, detail: str):
         """Write an immutable entry to the cryptographic audit ledger."""

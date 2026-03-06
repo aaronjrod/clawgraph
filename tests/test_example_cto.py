@@ -37,20 +37,35 @@ from nodes import (
 # Group nodes by bag for registration.
 BAG_NODES = {
     "clinical_regulatory": [
-        manage_ind_submission, benchmark_protocol, author_ib, generate_annual_report,
+        manage_ind_submission,
+        benchmark_protocol,
+        author_ib,
+        generate_annual_report,
     ],
     "cmc_regulatory": [
-        manage_stability, author_mod3, validate_process,
+        manage_stability,
+        author_mod3,
+        validate_process,
     ],
     "clinical_ops": [
-        sync_patient, onboard_patient, vet_invoices, manage_inventory,
-        log_deviation, triage_abnormals, check_integrity, scribe_visit,
+        sync_patient,
+        onboard_patient,
+        vet_invoices,
+        manage_inventory,
+        log_deviation,
+        triage_abnormals,
+        check_integrity,
+        scribe_visit,
     ],
     "reg_ops": [
-        publish_ectd, format_submission, coordinate_global,
+        publish_ectd,
+        format_submission,
+        coordinate_global,
     ],
     "strategy_labeling": [
-        assess_risk, negotiate_label, manage_ccds,
+        assess_risk,
+        negotiate_label,
+        manage_ccds,
     ],
     "marketing": [
         write_pr,
@@ -103,6 +118,4 @@ class TestCTONodeRegistration:
         for node_fns in BAG_NODES.values():
             for fn in node_fns:
                 meta = fn._clawnode_metadata
-                assert len(meta.skills) > 0, (
-                    f"{fn.__name__} has no skills"
-                )
+                assert len(meta.skills) > 0, f"{fn.__name__} has no skills"

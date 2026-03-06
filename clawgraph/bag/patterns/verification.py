@@ -73,9 +73,7 @@ class VerificationNode:
             result_uri=artifact_uri,
             error_detail=ErrorDetail(
                 failure_class=FailureClass.LOGIC_ERROR,
-                message="; ".join(
-                    f"{f.name}: {f.message or 'failed'}" for f in failures
-                ),
+                message="; ".join(f"{f.name}: {f.message or 'failed'}" for f in failures),
                 expected=first.expected or None,
                 actual=first.actual or None,
             ),

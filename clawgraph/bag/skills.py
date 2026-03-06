@@ -61,9 +61,7 @@ class SkillsContextManager:
             ValueError: If no skills_dir is configured.
         """
         if self._skills_dir is None:
-            raise ValueError(
-                "No skills_dir configured. Call set_skills_dir() first."
-            )
+            raise ValueError("No skills_dir configured. Call set_skills_dir() first.")
 
         # Check cache first.
         if skill_path in self._cache:
@@ -110,9 +108,7 @@ class SkillsContextManager:
         sections: list[str] = []
         for skill_path in skills_list:
             content = self.load_skill(skill_path)
-            sections.append(
-                f"--- Skill: {skill_path} ---\n{content}"
-            )
+            sections.append(f"--- Skill: {skill_path} ---\n{content}")
 
         return "\n\n".join(sections)
 

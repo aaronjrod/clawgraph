@@ -16,12 +16,8 @@ def _make_skill_dir(tmp_path: Path) -> Path:
     # Create subdirectory with a skill file.
     ops = skills / "clinical_ops"
     ops.mkdir()
-    (ops / "patient_tracking.md").write_text(
-        "# Patient Tracking\nTrack patients daily.\n"
-    )
-    (ops / "deviation_report.md").write_text(
-        "# Deviation Reporting\nLog deviations.\n"
-    )
+    (ops / "patient_tracking.md").write_text("# Patient Tracking\nTrack patients daily.\n")
+    (ops / "deviation_report.md").write_text("# Deviation Reporting\nLog deviations.\n")
     return skills
 
 

@@ -37,7 +37,8 @@ def build_hud_snapshot(
 
     # Compute data-flow links.
     data_flow_links = compute_implicit_links(
-        signal_manager._node_states, manifest_nodes or {},
+        signal_manager._node_states,
+        manifest_nodes or {},
     )
 
     for node_id in sorted(all_ids):
@@ -47,20 +48,20 @@ def build_hud_snapshot(
             "id": node_id,
             "name": node_id,
             "status": state.status.value if state else NodeStatus.PENDING.value,
-            "last_signal": (
-                state.last_signal.value if state and state.last_signal else None
-            ),
+            "last_signal": (state.last_signal.value if state and state.last_signal else None),
             "summary": state.last_summary if state else None,
             "result_uri": state.result_uri if state else None,
         }
         nodes.append(node_entry)
 
         # Topology link: orchestrator -> node.
-        links.append({
-            "source": "orchestrator",
-            "target": node_id,
-            "type": "topology",
-        })
+        links.append(
+            {
+                "source": "orchestrator",
+                "target": node_id,
+                "type": "topology",
+            }
+        )
 
     # Append data-flow links.
     links.extend(data_flow_links)

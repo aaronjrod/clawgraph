@@ -31,12 +31,14 @@ def _make_output(
         )
     if signal == Signal.NEED_INFO:
         from clawgraph.core.models import InfoRequest
+
         defaults["info_request"] = kwargs.pop(
             "info_request",
             InfoRequest(question="test?", context="test context"),
         )
     if signal == Signal.HOLD_FOR_HUMAN:
         from clawgraph.core.models import HumanRequest
+
         defaults["human_request"] = kwargs.pop(
             "human_request",
             HumanRequest(message="Approve?"),
@@ -174,6 +176,7 @@ class TestSignalManagerReset:
 class TestSignalManagerTimeline:
     def test_process_signal_emits_timeline_event(self):
         from clawgraph.core.timeline import TimelineBuffer
+
         buf = TimelineBuffer()
         sm = SignalManager(timeline_buffer=buf)
         sm.set_active_thread("thread_1")
@@ -187,6 +190,7 @@ class TestSignalManagerTimeline:
 
     def test_mark_running_emits_timeline_event(self):
         from clawgraph.core.timeline import TimelineBuffer
+
         buf = TimelineBuffer()
         sm = SignalManager(timeline_buffer=buf)
         sm.set_active_thread("thread_1")
@@ -206,6 +210,7 @@ class TestSignalManagerTimeline:
     def test_no_thread_id_no_emit(self):
         """Without set_active_thread, no timeline events emitted."""
         from clawgraph.core.timeline import TimelineBuffer
+
         buf = TimelineBuffer()
         sm = SignalManager(timeline_buffer=buf)
         # Don't call set_active_thread

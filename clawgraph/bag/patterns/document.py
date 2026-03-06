@@ -83,9 +83,7 @@ class DocumentNode:
         Returns a DONE signal with edit metadata. The edits themselves
         are stored externally; the ClawOutput only contains the summary.
         """
-        edit_descriptions = [
-            f"[{e.section}]: {e.reason or 'Updated'}" for e in edits
-        ]
+        edit_descriptions = [f"[{e.section}]: {e.reason or 'Updated'}" for e in edits]
         detail = "; ".join(edit_descriptions)
         return ClawOutput(
             signal=Signal.DONE,

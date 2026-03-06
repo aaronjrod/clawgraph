@@ -25,18 +25,20 @@ def build_orchestrator_prompt(
     Returns:
         The complete system prompt string.
     """
-    return "\n\n".join([
-        _section_identity(bag_name),
-        _section_what_you_see(),
-        _section_what_you_dont_see(),
-        _section_signal_routing(),
-        _section_context_discipline(),
-        _section_prerequisite_resolution(),
-        _section_escalation_rules(max_iterations),
-        _section_iteration_governance(max_iterations),
-        _section_output_contract(),
-        _section_guardrails(),
-    ])
+    return "\n\n".join(
+        [
+            _section_identity(bag_name),
+            _section_what_you_see(),
+            _section_what_you_dont_see(),
+            _section_signal_routing(),
+            _section_context_discipline(),
+            _section_prerequisite_resolution(),
+            _section_escalation_rules(max_iterations),
+            _section_iteration_governance(max_iterations),
+            _section_output_contract(),
+            _section_guardrails(),
+        ]
+    )
 
 
 # ── Prompt Sections ──────────────────────────────────────────────────────────
