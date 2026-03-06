@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clawgraph-ai"
+version = "0.1.1"
+description = "The observable, AI-first orchestration library for self-healing workflows"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Aaron Rodrigues", email = "aaronr@gatech.edu"}
+]
+urls = {Homepage = "https://github.com/aaronjrod/clawgraph", Repository = "https://github.com/aaronjrod/clawgraph"}
+dependencies = [
+    "pydantic>=2.0",
+    "langgraph>=0.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.9.0",
+    "mypy>=1.14",
+]
+examples = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.27.1",
+    "google-genai>=0.2.0",
+    "python-dotenv>=1.0.1",
+]
+
+[tool.setuptools.packages.find]
+include = ["clawgraph*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["clawgraph"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["langgraph.*", "langchain_core.*"]
+ignore_missing_imports = true
