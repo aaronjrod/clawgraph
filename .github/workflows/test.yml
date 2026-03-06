@@ -42,8 +42,7 @@ jobs:
     - name: Generate Coverage Badge
       if: matrix.python-version == '3.12'
       run: |
-        uv pip install --system coverage-badge setuptools
-        coverage-badge -o coverage.svg -f
+        uv run --with setuptools --with coverage-badge coverage-badge -o coverage.svg -f
     - name: Commit Coverage Badge
       if: matrix.python-version == '3.12'
       uses: stefanzweifel/git-auto-commit-action@v5
