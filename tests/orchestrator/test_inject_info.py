@@ -42,7 +42,7 @@ class TestInjectInfo:
         bag.manager.register_node(questioner)
 
         # First run — should stall on NEED_INFO
-        result = bag.start_job(
+        bag.start_job(
             objective="Info test.",
             max_iterations=2,
             thread_id="info-thread",
@@ -77,7 +77,7 @@ class TestInjectInfo:
 
         bag.manager.register_node(asker)
 
-        result = bag.start_job(
+        bag.start_job(
             objective="Re-enqueue test.",
             max_iterations=1,
             thread_id="enqueue-thread",

@@ -18,6 +18,7 @@ from clawgraph.bag.manager import BagManager
 from clawgraph.bag.skills import SkillsContextManager
 from clawgraph.core.models import ArchiveEntry, BagContract
 from clawgraph.core.signals import SignalManager
+from clawgraph.core.timeline import TimelineBuffer
 from clawgraph.orchestrator.prompts import build_orchestrator_prompt
 
 logger = logging.getLogger(__name__)
@@ -124,7 +125,8 @@ class ClawBag:
 
         # Core components.
         self._manager = BagManager(name=name)
-        self._signal_manager = SignalManager()
+        self._timeline = TimelineBuffer()
+        self._signal_manager = SignalManager(timeline_buffer=self._timeline)
         self._skills = SkillsContextManager(skills_dir=skills_dir)
 
         # Compilation state.
@@ -525,7 +527,7 @@ class ClawBag:
             The updated BagState snapshot.
         """
         # Build a synthetic state update.
-        state: BagState = {  # type: ignore[typeddict-item]
+        state: BagState = {  # type: ignore[typeddict-unknown-key]
             "continuation_context": {node_id: answer},
             "ready_queue": [node_id],
         }
@@ -567,7 +569,6 @@ class ClawBag:
             "node_id": latest.node_id,
             "signal": latest.signal.value if latest.signal else None,
             "summary": latest.summary,
-            "result_uri": latest.result_uri,
         }
 
         # Enrich with archive entry if available.

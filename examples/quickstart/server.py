@@ -5,7 +5,6 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from typing_extensions import Protocol
 
 app = FastAPI()
 
@@ -18,7 +17,7 @@ def set_active_bag(bag: Any) -> None:
 
 @app.get("/")
 def get_index() -> HTMLResponse:
-    with open("examples/live_integration/index.html", "r") as f:
+    with open("examples/live_integration/index.html") as f:
         html = f.read()
     return HTMLResponse(content=html)
 

@@ -266,6 +266,8 @@ class TestClawBagSummary:
     def test_get_summary_without_timeline(self):
         """Fallback: summary generated from SignalManager state."""
         bag = ClawBag(name="test_bag")
+        # Force fallback by removing the default timeline
+        bag.signal_manager._timeline = None
         bag.manager.register_node(success_node)
         output = ClawOutput(
             signal=Signal.DONE,

@@ -47,7 +47,7 @@ class TestMemoryPruning:
         bag.manager.register_node(step_one)
         bag.manager.register_node(step_two)
 
-        result = bag.start_job(objective="Pruning test.", max_iterations=10)
+        bag.start_job(objective="Pruning test.", max_iterations=10)
 
         # Both steps should have run
         assert "step_one" in call_order
