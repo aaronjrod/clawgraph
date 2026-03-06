@@ -646,9 +646,12 @@
                         <details>
                             <summary>Mismatch in Impurity Drift</summary>
                             <div class="summary-content failure">
-                                <strong>Error Code: CMC-402</strong><br>
-                                Detected 0.045% variance in Batch Alpha-9. Threshold exceeded (limit 0.020%).
-                                Automated recalibration failed. Requires manual sign-off.
+                                <strong>Failure Class:</strong> VALIDATION_ERROR<br>
+                                <strong>Message:</strong> Detected 0.045% variance in Batch Alpha-9. Automated
+                                recalibration failed. Requires manual sign-off.<br>
+                                <strong>Expected:</strong> &lt;= 0.020% drift<br>
+                                <strong>Actual:</strong> 0.045% drift<br>
+                                <strong>Suggested Fix:</strong> recalibrate_sensors(batch="Alpha-9")
                             </div>
                         </details>
                     </li>

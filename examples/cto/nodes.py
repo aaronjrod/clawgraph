@@ -3,8 +3,16 @@ ClawGraph Expert Example: Clinical Trial Operations (CTO)
 Architecture: One Bag Per Specialist | One Node Per Task | Explicit Tool Authorization
 """
 
-from clawgraph import clawnode, ClawOutput, Signal
-from clawgraph.core.models import HumanRequest
+from clawgraph import clawnode, ClawOutput, Signal, ClawBag
+from clawgraph.core.models import HumanRequest, ErrorDetail
+
+# --- Bags ---
+clinical_reg_bag = ClawBag("clinical_regulatory")
+cmc_reg_bag = ClawBag("cmc_regulatory")
+clinical_ops_bag = ClawBag("clinical_ops")
+reg_ops_bag = ClawBag("reg_ops")
+strategy_labeling_bag = ClawBag("strategy_labeling")
+marketing_bag = ClawBag("marketing")
 
 # --- Specialist Tools (Mock Imports) ---
 # Each bag is authorized for specific tools defined in examples/cto/tools/
@@ -21,7 +29,7 @@ from clawgraph.core.models import HumanRequest
 @clawnode(
     id="ind_submission",
     description="Compiles IND submission packages.",
-    bag="clinical_regulatory",
+    bag=clinical_reg_bag.name,
     skills=["clinical_reg/ind_submissions.md"],
     tools=["pdf_parser"],
 )
@@ -37,7 +45,7 @@ def manage_ind_submission(state: dict) -> ClawOutput:
 @clawnode(
     id="protocol_benchmark",
     description="Drafts and benchmarks clinical protocols.",
-    bag="clinical_regulatory",
+    bag=clinical_reg_bag.name,
     skills=["clinical_reg/protocol_development.md"],
     tools=["google_search"],
 )
@@ -53,7 +61,7 @@ def benchmark_protocol(state: dict) -> ClawOutput:
 @clawnode(
     id="ib_authoring",
     description="Authors Investigator Brochure sections.",
-    bag="clinical_regulatory",
+    bag=clinical_reg_bag.name,
     skills=["clinical_reg/investigator_brochure.md"],
     tools=["stats_calc"],
 )
@@ -69,7 +77,7 @@ def author_ib(state: dict) -> ClawOutput:
 @clawnode(
     id="annual_report",
     description="Generates annual regulatory reports.",
-    bag="clinical_regulatory",
+    bag=clinical_reg_bag.name,
     skills=["clinical_reg/annual_reports_meetings.md"],
     tools=["pdf_parser"],
 )
@@ -88,7 +96,7 @@ def generate_annual_report(state: dict) -> ClawOutput:
 @clawnode(
     id="stability_manager",
     description="Monitors stability data and impurity drift.",
-    bag="cmc_regulatory",
+    bag=cmc_reg_bag.name,
     skills=["cmc_reg/stability_data_management.md"],
     tools=["excel_bridge", "stats_calc"],
 )
@@ -104,7 +112,7 @@ def manage_stability(state: dict) -> ClawOutput:
 @clawnode(
     id="mod3_author",
     description="Authors Module 3 technical documentation.",
-    bag="cmc_regulatory",
+    bag=cmc_reg_bag.name,
     skills=["cmc_reg/module_3_authoring.md"],
     tools=["pdf_parser"],
 )
@@ -120,7 +128,7 @@ def author_mod3(state: dict) -> ClawOutput:
 @clawnode(
     id="process_val",
     description="Validates drug substance manufacturing processes.",
-    bag="cmc_regulatory",
+    bag=cmc_reg_bag.name,
     skills=["cmc_reg/drug_substance_process_validation.md"],
     tools=["stats_calc"],
 )
@@ -139,7 +147,7 @@ def validate_process(state: dict) -> ClawOutput:
 @clawnode(
     id="patient_sync",
     description="Daily patient tracking and timezone synchronization.",
-    bag="clinical_ops",
+    bag=clinical_ops_bag.name,
     skills=["clinical_ops/patient_tracking_sync.md"],
     tools=["excel_bridge", "gmail_api"],
 )
@@ -155,7 +163,7 @@ def sync_patient(state: dict) -> ClawOutput:
 @clawnode(
     id="onboarding",
     description="Onboards new patients with documentation.",
-    bag="clinical_ops",
+    bag=clinical_ops_bag.name,
     skills=["clinical_ops/new_patient_onboarding.md"],
     tools=["gmail_api", "pdf_parser"],
 )
@@ -171,7 +179,7 @@ def onboard_patient(state: dict) -> ClawOutput:
 @clawnode(
     id="lab_vetting",
     description="Vets lab invoices against Schedule of Assessments.",
-    bag="clinical_ops",
+    bag=clinical_ops_bag.name,
     skills=["clinical_ops/lab_invoice_vetting.md"],
     tools=["pdf_parser", "stats_calc"],
 )
@@ -187,7 +195,7 @@ def vet_invoices(state: dict) -> ClawOutput:
 @clawnode(
     id="dosing_alignment",
     description="Manages drug inventory and dosing narration.",
-    bag="clinical_ops",
+    bag=clinical_ops_bag.name,
     skills=["clinical_ops/inventory_management.md"],
     tools=["excel_bridge"],
 )
@@ -203,7 +211,7 @@ def manage_inventory(state: dict) -> ClawOutput:
 @clawnode(
     id="deviation_report",
     description="Logs protocol deviations to notary log.",
-    bag="clinical_ops",
+    bag=clinical_ops_bag.name,
     skills=["clinical_ops/deviation_reporting.md"],
     tools=["notary_log"],
 )
@@ -219,7 +227,7 @@ def log_deviation(state: dict) -> ClawOutput:
 @clawnode(
     id="abnormal_triage",
     description="Triages abnormal lab values for physician review.",
-    bag="clinical_ops",
+    bag=clinical_ops_bag.name,
     skills=["clinical_ops/abnormality_triage.md"],
     tools=["google_search"],
 )
@@ -238,7 +246,7 @@ def triage_abnormals(state: dict) -> ClawOutput:
 @clawnode(
     id="integrity_checker",
     description="Cross-dossier entity alignment and NM-class verification.",
-    bag="clinical_ops",
+    bag=clinical_ops_bag.name,
     skills=["clinical_ops/document_alignment_checker.md"],
     tools=["pdf_parser"],
 )
@@ -273,7 +281,7 @@ def scribe_visit(state: dict) -> ClawOutput:
 @clawnode(
     id="ectd_publisher",
     description="Generates and validates eCTD submission packages.",
-    bag="reg_ops",
+    bag=reg_ops_bag.name,
     skills=["reg_ops/ectd_publishing.md"],
     tools=["pdf_parser"],
 )
@@ -289,7 +297,7 @@ def publish_ectd(state: dict) -> ClawOutput:
 @clawnode(
     id="formatting",
     description="Coordinates submission formatting and hyperlinks.",
-    bag="reg_ops",
+    bag=reg_ops_bag.name,
     skills=["reg_ops/formatting_coordination.md"],
     tools=["pdf_parser"],
 )
@@ -305,7 +313,7 @@ def format_submission(state: dict) -> ClawOutput:
 @clawnode(
     id="global_coord",
     description="Coordinates global multi-country regulatory filings.",
-    bag="reg_ops",
+    bag=reg_ops_bag.name,
     skills=["reg_ops/global_coordination.md"],
     tools=["gmail_api"],
 )
@@ -324,7 +332,7 @@ def coordinate_global(state: dict) -> ClawOutput:
 @clawnode(
     id="risk_assess",
     description="Assesses market risk for regulatory strategy.",
-    bag="strategy_labeling",
+    bag=strategy_labeling_bag.name,
     skills=["strategy/risk_negotiation.md"],
     tools=["google_search"],
 )
@@ -340,7 +348,7 @@ def assess_risk(state: dict) -> ClawOutput:
 @clawnode(
     id="label_negotiator",
     description="Optimizes USPI labeling strategy.",
-    bag="strategy_labeling",
+    bag=strategy_labeling_bag.name,
     skills=["strategy/approval_strategy.md"],
     tools=["pdf_parser"],
 )
@@ -356,7 +364,7 @@ def negotiate_label(state: dict) -> ClawOutput:
 @clawnode(
     id="ccds_manager",
     description="Aligns CCDS with safety signals across regions.",
-    bag="strategy_labeling",
+    bag=strategy_labeling_bag.name,
     skills=["labeling/leaflets_ccds.md"],
     tools=["pdf_parser"],
 )
@@ -375,7 +383,7 @@ def manage_ccds(state: dict) -> ClawOutput:
 @clawnode(
     id="press_writer",
     description="Drafts press releases for regulatory milestones.",
-    bag="marketing",
+    bag=marketing_bag.name,
     skills=["marketing/press_release.md"],
     tools=["gmail_api"],
 )
