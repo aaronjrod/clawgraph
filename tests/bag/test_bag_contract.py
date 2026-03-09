@@ -79,9 +79,13 @@ class TestBagContract:
 
         result = bag.start_job(objective="Signal violation.", max_iterations=3)
 
-        # The output should be a contract violation (synthesized FAILED)
-        output = result.get("current_output", {})
-        assert output.get("orchestrator_synthesized") is True, (
+        # The node should have been recorded as FAILED due to contract violation
+        events = bag.signal_manager._timeline.get_timeline(result["thread_id"])
+        hold_events = [e for e in events if e.node_id == "hold_node" and e.signal is not None]
+        hold_event = hold_events[-1]
+        
+        assert hold_event.signal.value == "FAILED"
+        assert hold_event.metadata.get("orchestrator_synthesized") is True, (
             "Contract violation should produce a synthesized error"
         )
 

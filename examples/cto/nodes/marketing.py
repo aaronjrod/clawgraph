@@ -1,6 +1,6 @@
 from clawgraph import ClawOutput, Signal, clawnode
 from clawgraph.core.models import HumanRequest
-
+from .llm_utils import run_cto_llm_node
 
 @clawnode(
     id="press_writer",
@@ -19,11 +19,9 @@ def write_pr(state: dict) -> ClawOutput:
             orchestrator_summary="Awaiting regulatory milestone confirmation.",
             human_request=HumanRequest(message="Awaiting regulatory milestone confirmation."),
         )
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/press_release.md")
-    return ClawOutput(
-        signal=Signal.DONE,
+    return run_cto_llm_node(
         node_id="press_writer",
-        orchestrator_summary="Press Release drafted. Headline approved: 'FDA Accepts IND for Novel CG-204 Therapeutics'. Ready for investor relations review.",
-        result_uri=f"file://{abs_path}",
+        description="Drafts press releases for regulatory milestones.",
+        state=state,
+        skills=["marketing/press_release.md"]
     )

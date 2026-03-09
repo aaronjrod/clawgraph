@@ -1,3 +1,5 @@
+import pytest
+
 """End-to-end integration test — exercises the full ClawBag lifecycle.
 
 Covers:
@@ -26,7 +28,7 @@ from clawgraph.orchestrator.graph import ClawBag, _entry_visible
 class TestE2ELifecycle:
     """Full lifecycle: producer → prereq stall → resolve → consumer → DONE."""
 
-    def test_full_producer_consumer_lifecycle(self):
+    def test_full_producer_consumer_lifecycle(self, mock_gemini):
         bag = ClawBag(name="integration_bag")
 
         @clawnode(id="data_producer", description="Produces data.", bag="integration_bag")
@@ -56,6 +58,14 @@ class TestE2ELifecycle:
         bag.manager.register_node(data_consumer)
         bag.manager.register_node(data_producer)
 
+        # Prime the mock for the multi-turn lifecycle:
+        # 1. Dispatch producer
+        # 2. Dispatch consumer (which will stall, then resolve)
+        # 3. Complete
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "data_producer"}, text="Thinking: I need to produce the data first.")
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "data_consumer"}, text="Thinking: Now that data is available, I can consume it.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "E2E success"}, text="Thinking: All nodes completed successfully.")
+
         result = bag.start_job(objective="Produce and consume data.", inputs={})
         assert result is not None
 
@@ -79,14 +89,15 @@ class TestE2ELifecycle:
         assert len(resolve_events) >= 1, "Should have resolved after producer"
 
         # Queues should be drained
-        assert result.get("stalled_queue") == []
+        assert result.get("stalled_queue", []) == []
+        assert result.get("ready_queue", []) == []
         assert len(result.get("completed_nodes", [])) == 2
 
 
 class TestE2EWithHITL:
     """HITL suspension: node signals HOLD_FOR_HUMAN, handler receives context."""
 
-    def test_hitl_suspension_and_resume(self):
+    def test_hitl_suspension_and_resume(self, mock_gemini):
         bag = ClawBag(name="hitl_bag")
 
         @clawnode(id="approval_gate", description="Requests approval.", bag="hitl_bag")
@@ -109,6 +120,10 @@ class TestE2EWithHITL:
             delivered.append(req)
 
         bag.register_hitl_handler(handler)
+        
+        # Prime mock to suspend
+        mock_gemini.add_expected_call("suspend", {"human_request_message": "Approve deployment?"}, text="Thinking: This is a sensitive operation, I need human approval.")
+        
         result = bag.start_job(objective="Deploy with approval.")
 
         assert result.get("suspended") is True
@@ -119,7 +134,7 @@ class TestE2EWithHITL:
 class TestE2ENeedInfoRetry:
     """NEED_INFO within budget: node retries instead of escalating."""
 
-    def test_need_info_does_not_immediately_escalate(self):
+    def test_need_info_does_not_immediately_escalate(self, mock_gemini):
         bag = ClawBag(name="info_bag")
 
         call_count = {"n": 0}
@@ -145,6 +160,12 @@ class TestE2ENeedInfoRetry:
             )
 
         bag.manager.register_node(clarify_node)
+        
+        # Prime mock to dispatch twice
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "clarify_node"}, text="Thinking: First attempt, might need info.")
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "clarify_node"}, text="Thinking: Retrying after receiving info.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "Done after retry"}, text="Thinking: Work is now complete.")
+        
         result = bag.start_job(objective="Clarify and produce.", max_iterations=5)
 
         # The node should have been called at least twice (once NEED_INFO, once DONE)
@@ -156,7 +177,7 @@ class TestE2ENeedInfoRetry:
 class TestE2EAggregatorPartialCommit:
     """Aggregator with eager partial commit: successful branches committed."""
 
-    def test_eager_aggregator_commits_partial(self):
+    def test_eager_aggregator_commits_partial(self, mock_gemini):
         bag = ClawBag(name="agg_bag")
 
         @clawnode(id="quality_gate", description="Aggregates.", bag="agg_bag")
@@ -193,6 +214,13 @@ class TestE2EAggregatorPartialCommit:
             )
 
         bag.manager.register_node(quality_gate)
+        
+        # Aggregator emits PARTIAL. In LLM mode, PARTIAL isn't a special routing signal anymore,
+        # it just means the node finished its turn with partial results.
+        # The Orchestrator decides whether to complete or dispatch more.
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "quality_gate"}, text="Thinking: Running the quality gate aggregator.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "Aggregated"}, text="Thinking: Aggregation complete, even with partial results.")
+        
         result = bag.start_job(objective="Run quality gate.")
 
         archive = result.get("document_archive", {})
@@ -208,7 +236,7 @@ class TestE2EAggregatorPartialCommit:
 class TestE2EDomainVisibility:
     """Domain-tag visibility: internal docs from other bags are not visible."""
 
-    def test_cross_bag_internal_blocked(self):
+    def test_cross_bag_internal_blocked(self, mock_gemini):
         """A node requiring a doc tagged 'internal' from another bag should stall."""
         bag = ClawBag(name="my_bag")
 
@@ -236,18 +264,23 @@ class TestE2EDomainVisibility:
             created_by="other_node",
         ).model_dump()
 
+        # If it stalls, the tool dispatch_node returns updates with signal=None.
+        # The LLM sees this and should eventually complete or escalate.
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "reader"}, text="Thinking: Attempting to read the document.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "Stalled out"}, text="Thinking: Document is not visible from this domain. Finishing for now.")
+
         result = bag.start_job(
             objective="Read classified doc.",
             inputs={"classified_doc": foreign_entry},
         )
 
         # The reader should NOT have executed — doc is not visible
+        assert "reader" not in result.get("completed_nodes", [])
         output = result.get("current_output", {})
-        assert output.get("signal") != Signal.DONE, (
-            "Node executed but should have been blocked by domain visibility"
-        )
+        assert output.get("node_id") == "orchestrator"
+        assert output.get("signal") == Signal.DONE
 
-    def test_cross_bag_public_allowed(self):
+    def test_cross_bag_public_allowed(self, mock_gemini):
         """A node requiring a doc tagged 'public' from another bag should proceed."""
         bag = ClawBag(name="my_bag")
 
@@ -274,6 +307,10 @@ class TestE2EDomainVisibility:
             tags=["public"],
             created_by="other_node",
         ).model_dump()
+
+        # Should proceed
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "reader"}, text="Thinking: Reading the public shared document.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "Allowed"}, text="Thinking: Successfully read the public document.")
 
         result = bag.start_job(
             objective="Read shared doc.",

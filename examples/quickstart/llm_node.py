@@ -60,7 +60,7 @@ def build_llm_node(node_id: str, system_prompt: str, bag: ClawBag) -> callable:
             time.sleep(2)
 
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.1-flash-lite-preview",
                 contents=user_content,
                 config=types.GenerateContentConfig(
                     system_instruction=sys_prompt,

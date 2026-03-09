@@ -1,5 +1,7 @@
 """Tests for ClawBag — setup, compilation, execution, repr, audit/rollback, summary."""
 
+import pytest
+
 from conftest import (
     crashing_node,
     failing_node,
@@ -10,6 +12,7 @@ from conftest import (
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, Signal
 from clawgraph.orchestrator.graph import ClawBag
+
 
 # ── ClawBag Setup Tests ──────────────────────────────────────────────────────
 
@@ -73,9 +76,12 @@ class TestClawBagCompilation:
 
 
 class TestClawBagExecution:
-    def test_start_job_success(self):
+    def test_start_job_success(self, mock_gemini):
         bag = ClawBag(name="test_bag")
         bag.manager.register_node(success_node)
+        
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "success_node"}, text="Thinking: Dispatch.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Done.")
 
         result = bag.start_job(objective="Test run.", inputs={})
 
@@ -83,36 +89,45 @@ class TestClawBagExecution:
         output = result.get("current_output", {})
         assert output.get("signal") == Signal.DONE
 
-    def test_start_job_locks_and_unlocks(self):
+    def test_start_job_locks_and_unlocks(self, mock_gemini):
         bag = ClawBag(name="test_bag")
         bag.manager.register_node(success_node)
+
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "success_node"}, text="Thinking: Dispatch.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Done.")
 
         assert not bag.manager._locked
         bag.start_job(objective="Test locking.")
         assert not bag.manager._locked  # Unlocked after job completes.
 
-    def test_start_job_with_failing_node(self):
+    def test_start_job_with_failing_node(self, mock_gemini):
         bag = ClawBag(name="test_bag")
         bag.manager.register_node(failing_node)
+        
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "failing_node"}, text="Thinking: Dispatch.")
+        mock_gemini.add_expected_call("escalate", {"reason": "Node failed.", "failure_class": "LOGIC_ERROR"}, text="Thinking: Escalating.")
 
         result = bag.start_job(objective="Fail test.")
-        output = result.get("current_output", {})
-        assert output.get("signal") == Signal.FAILED
+        assert "pending_escalation" in result
+        esc = result["pending_escalation"]
+        assert esc["signal"] == "NEED_INTERVENTION"
+        assert esc["error_detail"]["failure_class"] == "LOGIC_ERROR"
 
     # Exception interception: unhandled exceptions -> synthesized FAILED.
-    def test_start_job_with_crashing_node(self):
+    def test_start_job_with_crashing_node(self, mock_gemini):
         bag = ClawBag(name="test_bag")
         bag.manager.register_node(crashing_node)
 
-        result = bag.start_job(objective="Crash test.")
-        output = result.get("current_output", {})
-        assert output.get("signal") == Signal.FAILED
-        assert output.get("orchestrator_synthesized") is True
-        assert output.get("error_detail") is not None
-        error = output["error_detail"]
-        assert error["failure_class"] == "SYSTEM_CRASH"
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "crashing_node"}, text="Thinking: Dispatch.")
+        mock_gemini.add_expected_call("escalate", {"reason": "System crash", "failure_class": "SYSTEM_CRASH"}, text="Thinking: Escalating.")
 
-    def test_start_job_with_hold_for_human(self):
+        result = bag.start_job(objective="Crash test.")
+        assert "pending_escalation" in result
+        esc = result["pending_escalation"]
+        assert esc["signal"] == "NEED_INTERVENTION"
+        assert esc["error_detail"]["failure_class"] == "SYSTEM_CRASH"
+
+    def test_start_job_with_hold_for_human(self, mock_gemini):
         bag = ClawBag(name="test_bag")
         bag.manager.register_node(hold_node)
 
@@ -122,11 +137,15 @@ class TestClawBagExecution:
             delivered.append(req)
 
         bag.register_hitl_handler(handler)
+        
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "hold_node"}, text="Thinking: Dispatch.")
+        mock_gemini.add_expected_call("suspend", {"human_request_message": "Needs human look."}, text="Thinking: Suspending.")
+        
         result = bag.start_job(objective="HITL test.")
         assert result.get("suspended") is True
         assert len(delivered) == 1
 
-    def test_start_job_prerequisite_stall_queues_and_resolves(self):
+    def test_start_job_prerequisite_stall_queues_and_resolves(self, mock_gemini):
         """
         Gap 1 (F-REQ-34 / B-REQ-14): Consumer node with unmet prerequisite is
         placed in STALLED queue. Orchestrator prioritizes producer, executes it,
@@ -161,6 +180,10 @@ class TestClawBagExecution:
         bag.manager.register_node(consumer_node)
         bag.manager.register_node(producer_node)
 
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "producer_node"}, text="Thinking: Dispatch producer.")
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "consumer_node"}, text="Thinking: Dispatch consumer.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Done.")
+
         result = bag.start_job(
             objective="Test prerequisite stall and resolution.",
             inputs={},
@@ -193,20 +216,12 @@ class TestClawBagExecution:
 
         # 4. Both nodes must have committed results to the archive
         archive = result.get("document_archive", {})
-
-        assert "producer_node_result" in archive, (
-            "Archive key convention check: producer_node should write to 'producer_node_result'."
-        )
-
-        assert "consumer_node_result" in archive, (
-            "Consumer node was not executed after prerequisite was resolved"
-        )
+        assert "producer_node_result" in archive
+        assert "consumer_node_result" in archive
 
         # 5. stalled_queue must be empty at job completion
         stalled = result.get("stalled_queue", [])
-        assert "consumer_node" not in stalled, (
-            "consumer_node should have been moved out of stalled_queue after resolution"
-        )
+        assert "consumer_node" not in stalled
 
 
 # ── ClawBag Repr Tests ───────────────────────────────────────────────────────

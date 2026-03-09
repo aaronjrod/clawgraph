@@ -1,6 +1,6 @@
 from clawgraph import ClawOutput, Signal, clawnode
 from clawgraph.core.models import HumanRequest
-
+from .llm_utils import run_cto_llm_node
 
 @clawnode(
     id="ectd_publisher",
@@ -19,13 +19,11 @@ def publish_ectd(state: dict) -> ClawOutput:
             orchestrator_summary="Awaiting source documents for eCTD synthesis.",
             human_request=HumanRequest(message="Awaiting source documents for eCTD synthesis."),
         )
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/ectd_package.md")
-    return ClawOutput(
-        signal=Signal.DONE,
+    return run_cto_llm_node(
         node_id="ectd_publisher",
-        orchestrator_summary="eCTD Package Validated. All 5 modules successfully compiled and verified against regional XML validation criteria.",
-        result_uri=f"file://{abs_path}",
+        description="Generates and validates eCTD submission packages.",
+        state=state,
+        skills=["reg_ops/ectd_publishing.md"]
     )
 
 @clawnode(
@@ -45,13 +43,11 @@ def format_submission(state: dict) -> ClawOutput:
             orchestrator_summary="Awaiting unformatted module drafts.",
             human_request=HumanRequest(message="Awaiting unformatted module drafts."),
         )
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/formatting.md")
-    return ClawOutput(
-        signal=Signal.DONE,
+    return run_cto_llm_node(
         node_id="formatting",
-        orchestrator_summary="Formatting & Hyperlinks checked. Corrected 14 broken internal references in Module 3 and applied standard ICH stylesheets.",
-        result_uri=f"file://{abs_path}",
+        description="Coordinates submission formatting and hyperlinks.",
+        state=state,
+        skills=["reg_ops/formatting_coordination.md"]
     )
 
 @clawnode(
@@ -71,13 +67,11 @@ def coordinate_global(state: dict) -> ClawOutput:
             orchestrator_summary="Awaiting regional dispatch clearance.",
             human_request=HumanRequest(message="Awaiting regional dispatch clearance."),
         )
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/global_coord.md")
-    return ClawOutput(
-        signal=Signal.DONE,
+    return run_cto_llm_node(
         node_id="global_coord",
-        orchestrator_summary="Global filing dispatched. EMA and MHRA gateways have confirmed receipt of Sequence 0001.",
-        result_uri=f"file://{abs_path}",
+        description="Coordinates global multi-country regulatory filings.",
+        state=state,
+        skills=["reg_ops/global_coordination.md"]
     )
 
 @clawnode(
@@ -89,12 +83,14 @@ def coordinate_global(state: dict) -> ClawOutput:
 def publish_submission(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "submission_plan" not in archive:
-        return ClawOutput(signal=Signal.HOLD_FOR_HUMAN, node_id="submission_publisher", orchestrator_summary="Awaiting submission plan.")
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/ectd_sequence_0001.md")
-    return ClawOutput(
-        signal=Signal.DONE,
+        return ClawOutput(
+            signal=Signal.HOLD_FOR_HUMAN, 
+            node_id="submission_publisher", 
+            orchestrator_summary="Awaiting submission plan."
+        )
+    return run_cto_llm_node(
         node_id="submission_publisher",
-        orchestrator_summary="Compiled EMEA eCTD submission Sequence 0001. Escalating Module 1 translation dependencies to regional vendors to preserve Q4 filing targets.",
-        result_uri=f"file://{abs_path}"
+        description="Publishes regions submissions into eCTD format.",
+        state=state,
+        skills=[]
     )

@@ -1,6 +1,6 @@
 from clawgraph import ClawOutput, Signal, clawnode
-from clawgraph.bag.patterns import CheckResult, VerificationNode
-
+from clawgraph.core.models import HumanRequest
+from .llm_utils import run_cto_llm_node
 
 @clawnode(
     id="manage_stability",
@@ -10,17 +10,11 @@ from clawgraph.bag.patterns import CheckResult, VerificationNode
     skills=["cmc_reg/stability_analysis.md"]
 )
 def manage_stability(state: dict) -> ClawOutput:
-    vn = VerificationNode("manage_stability")
-    checks = [
-        CheckResult(name="Impurity A limit check", passed=True, expected="< 0.05%", actual="0.045%"),
-        CheckResult(name="Impurity B limit check", passed=False, expected="< 0.10% (safe margin)", actual="0.098%", message="Drifting near upper control limit.")
-    ]
-
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/stability-assessment-q1.md")
-    return vn.evaluate(
-        checks=checks,
-        artifact_uri=f"file://{abs_path}"
+    return run_cto_llm_node(
+        node_id="manage_stability",
+        description="Monitors product stability data and flags deviations in impurity profiles.",
+        state=state,
+        skills=["cmc_reg/stability_analysis.md"]
     )
 
 @clawnode(
@@ -31,13 +25,11 @@ def manage_stability(state: dict) -> ClawOutput:
     tools=["pdf_parser"],
 )
 def author_mod3(state: dict) -> ClawOutput:
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/module3.md")
-    return ClawOutput(
-        signal=Signal.DONE,
+    return run_cto_llm_node(
         node_id="mod3_author",
-        orchestrator_summary="Module 3 updated.",
-        result_uri=f"file://{abs_path}",
+        description="Authors Module 3 technical documentation.",
+        state=state,
+        skills=["cmc_reg/module_3_authoring.md"]
     )
 
 @clawnode(
@@ -48,13 +40,11 @@ def author_mod3(state: dict) -> ClawOutput:
     tools=["stats_calc"],
 )
 def validate_process(state: dict) -> ClawOutput:
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/process_validation.md")
-    return ClawOutput(
-        signal=Signal.DONE,
+    return run_cto_llm_node(
         node_id="process_val",
-        orchestrator_summary="Manufacturing comparability confirmed.",
-        result_uri=f"file://{abs_path}",
+        description="Validates drug substance manufacturing processes.",
+        state=state,
+        skills=["cmc_reg/drug_substance_process_validation.md"]
     )
 
 @clawnode(
@@ -66,12 +56,14 @@ def validate_process(state: dict) -> ClawOutput:
 def qc_batch(state: dict) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "batch_record" not in archive:
-        return ClawOutput(signal=Signal.HOLD_FOR_HUMAN, node_id="manufacturing_qc", orchestrator_summary="Awaiting batch record.")
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/manufacturing_batch_record_v1.md")
-    return ClawOutput(
-        signal=Signal.DONE,
+        return ClawOutput(
+            signal=Signal.HOLD_FOR_HUMAN, 
+            node_id="manufacturing_qc", 
+            orchestrator_summary="Awaiting batch record."
+        )
+    return run_cto_llm_node(
         node_id="manufacturing_qc",
-        orchestrator_summary="Passed QC on Lot BR-9002. Active ingredient formulation deviates by 0.1% from target, but remains dynamically within acceptable stability margins.",
-        result_uri=f"file://{abs_path}"
+        description="Validates manufacturing batch records against chemical controls.",
+        state=state,
+        skills=[]
     )

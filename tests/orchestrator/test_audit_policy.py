@@ -1,5 +1,4 @@
 """TDD tests for audit_policy enforcement (F-REQ-27, Appendix §1.3)."""
-
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, Signal
 from clawgraph.orchestrator.graph import ClawBag
@@ -8,7 +7,7 @@ from clawgraph.orchestrator.graph import ClawBag
 class TestAuditPolicyEnforcement:
     """Audit policy and audit_hint should produce AUDIT_TRIGGERED events."""
 
-    def test_always_audit_emits_timeline_event(self):
+    def test_always_audit_emits_timeline_event(self, mock_gemini):
         """Node with audit_policy={"always": True} gets AUDIT_TRIGGERED."""
         bag = ClawBag(name="audit_bag")
 
@@ -27,6 +26,10 @@ class TestAuditPolicyEnforcement:
             )
 
         bag.manager.register_node(audited_node)
+        
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "audited_node"}, text="Thinking: This node is marked for audit.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: All work finished.")
+        
         result = bag.start_job(objective="Audit test.")
 
         timeline = result.get("timeline", [])
@@ -34,7 +37,7 @@ class TestAuditPolicyEnforcement:
         assert len(audit_events) >= 1, "Should have an AUDIT_TRIGGERED event"
         assert audit_events[0]["node_id"] == "audited_node"
 
-    def test_no_policy_no_audit_event(self):
+    def test_no_policy_no_audit_event(self, mock_gemini):
         """Node without audit_policy → no AUDIT_TRIGGERED event."""
         bag = ClawBag(name="no_audit_bag")
 
@@ -52,13 +55,17 @@ class TestAuditPolicyEnforcement:
             )
 
         bag.manager.register_node(normal_node)
+        
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "normal_node"}, text="Thinking: Just a normal node.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Finished.")
+        
         result = bag.start_job(objective="No audit.")
 
         timeline = result.get("timeline", [])
         audit_events = [e for e in timeline if e.get("signal") == "AUDIT_TRIGGERED"]
         assert len(audit_events) == 0
 
-    def test_audit_hint_true_emits_event(self):
+    def test_audit_hint_true_emits_event(self, mock_gemini):
         """Node output with audit_hint=True gets AUDIT_TRIGGERED."""
         bag = ClawBag(name="hint_bag")
 
@@ -73,13 +80,17 @@ class TestAuditPolicyEnforcement:
             )
 
         bag.manager.register_node(hint_node)
+        
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "hint_node"}, text="Thinking: Dispatching with hint.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Done.")
+        
         result = bag.start_job(objective="Hint audit.")
 
         timeline = result.get("timeline", [])
         audit_events = [e for e in timeline if e.get("signal") == "AUDIT_TRIGGERED"]
         assert len(audit_events) >= 1
 
-    def test_policy_overrides_hint_false(self):
+    def test_policy_overrides_hint_false(self, mock_gemini):
         """audit_policy={"always": True} + audit_hint=False → still triggers."""
         bag = ClawBag(name="override_bag")
 
@@ -99,8 +110,12 @@ class TestAuditPolicyEnforcement:
             )
 
         bag.manager.register_node(override_node)
+        
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "override_node"}, text="Thinking: Policy wins.")
+        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Done.")
+        
         result = bag.start_job(objective="Override test.")
 
         timeline = result.get("timeline", [])
         audit_events = [e for e in timeline if e.get("signal") == "AUDIT_TRIGGERED"]
-        assert len(audit_events) >= 1, "Policy should override hint=False"
+        assert len(audit_events) >= 1

@@ -4,6 +4,8 @@ inject_info() allows the SO to answer a NEED_INFO question by writing
 the answer into continuation_context and re-enqueuing the node.
 """
 
+import pytest
+
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, InfoRequest, Signal
 from clawgraph.orchestrator.graph import ClawBag
@@ -12,7 +14,7 @@ from clawgraph.orchestrator.graph import ClawBag
 class TestInjectInfo:
     """inject_info() API on ClawBag."""
 
-    def test_inject_info_adds_to_continuation_context(self):
+    def test_inject_info_adds_to_continuation_context(self, mock_gemini):
         """After inject, state should have continuation_context for the node."""
         bag = ClawBag(name="inject_bag")
 
@@ -41,6 +43,11 @@ class TestInjectInfo:
 
         bag.manager.register_node(questioner)
 
+        # 1. Dispatch questioner (returns NEED_INFO)
+        # 2. Orchestrator suspends
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "questioner"}, text="Thinking: Dispatch.")
+        mock_gemini.add_expected_call("suspend", {"human_request_message": "Need clarification."}, text="Thinking: Suspending.")
+
         # First run — should stall on NEED_INFO
         bag.start_job(
             objective="Info test.",
@@ -58,7 +65,7 @@ class TestInjectInfo:
         # verify the injection API exists and returns a valid state
         assert hasattr(bag, "inject_info")
 
-    def test_inject_info_re_enqueues_node(self):
+    def test_inject_info_re_enqueues_node(self, mock_gemini):
         """After inject, the node should appear in ready_queue."""
         bag = ClawBag(name="reenqueue_bag")
 
@@ -77,9 +84,12 @@ class TestInjectInfo:
 
         bag.manager.register_node(asker)
 
+        mock_gemini.add_expected_call("dispatch_node", {"node_id": "asker"}, text="Thinking: Dispatch.")
+        mock_gemini.add_expected_call("suspend", {"human_request_message": "Need info."}, text="Thinking: Suspending.")
+
         bag.start_job(
             objective="Re-enqueue test.",
-            max_iterations=1,
+            max_iterations=2,
             thread_id="enqueue-thread",
         )
 

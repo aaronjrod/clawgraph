@@ -50,8 +50,13 @@ venv.bak/
 sessions/
 document_archive/
 logs/
+examples/cto/logs/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
 .cache/
 .coverage
+temp/
+examples/cto/artifacts/
+examples/cto/cto_simulation.log
+examples/cto/.agent/

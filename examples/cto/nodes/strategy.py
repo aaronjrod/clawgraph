@@ -1,6 +1,6 @@
 from clawgraph import ClawOutput, Signal, clawnode
 from clawgraph.core.models import HumanRequest
-
+from .llm_utils import run_cto_llm_node
 
 @clawnode(
     id="risk_assess",
@@ -19,13 +19,11 @@ def assess_risk(state: dict) -> ClawOutput:
             orchestrator_summary="Awaiting clinical endpoint data for risk quantification.",
             human_request=HumanRequest(message="Awaiting clinical endpoint data for risk quantification."),
         )
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/risk_assessment.md")
-    return ClawOutput(
-        signal=Signal.DONE,
+    return run_cto_llm_node(
         node_id="risk_assess",
-        orchestrator_summary="Market risk assessed. Hepatic safety signals pose a moderate labeling risk; recommending proactive REMS proposal drafting.",
-        result_uri=f"file://{abs_path}",
+        description="Assesses market risk for regulatory strategy.",
+        state=state,
+        skills=["strategy/risk_negotiation.md"]
     )
 
 @clawnode(
@@ -45,13 +43,11 @@ def negotiate_label(state: dict) -> ClawOutput:
             orchestrator_summary="Awaiting preliminary label drafting.",
             human_request=HumanRequest(message="Awaiting preliminary label drafting."),
         )
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/label_negotiation.md")
-    return ClawOutput(
-        signal=Signal.DONE,
+    return run_cto_llm_node(
         node_id="label_negotiator",
-        orchestrator_summary="USPI optimization draft ready. Strengthened the efficacy claims in Section 14 while balancing the newly proposed black box warning.",
-        result_uri=f"file://{abs_path}",
+        description="Optimizes USPI labeling strategy.",
+        state=state,
+        skills=["strategy/approval_strategy.md"]
     )
 
 @clawnode(
@@ -71,11 +67,9 @@ def manage_ccds(state: dict) -> ClawOutput:
             orchestrator_summary="Awaiting global safety signal alignments.",
             human_request=HumanRequest(message="Awaiting global safety signal alignments."),
         )
-    import os
-    abs_path = os.path.abspath("examples/cto/artifacts/generated/ccds.md")
-    return ClawOutput(
-        signal=Signal.DONE,
+    return run_cto_llm_node(
         node_id="ccds_manager",
-        orchestrator_summary="CCDS updated. Integrated Q2 spontaneous thrombocytopenia reports; no core safety info changes required.",
-        result_uri=f"file://{abs_path}",
+        description="Aligns CCDS with safety signals across regions.",
+        state=state,
+        skills=["labeling/leaflets_ccds.md"]
     )
