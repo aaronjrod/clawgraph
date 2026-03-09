@@ -9,6 +9,8 @@ Use this workflow to prepare the repository for a new release.
 
 1. **Verify State**
    - Ensure you are on the `main` branch: `git checkout main && git pull`
+   - Run linting: `ruff check .`
+   - Run type checking: `mypy clawgraph`
    - Ensure all tests pass: `pytest`
 
 2. **Bump Version**

@@ -13,12 +13,19 @@ ClawGraph uses `pyproject.toml` for metadata and `uv` or `pip` with `build` and 
 ### Prerequisites
 - Ensure your `~/.pypirc` is configured with a valid PyPI API token.
 - Install build tools: `uv pip install build twine`.
+### Pre-Release Verification
+Before publishing, the following checks MUST pass locally:
+- **Linting**: `ruff check .`
+- **Formatting**: `ruff format --check .`
+- **Type Checking**: `mypy clawgraph`
+- **Unit Tests**: `pytest`
 
 ### Publishing Steps
-1. **Bump Version**: Update the `version` field in `pyproject.toml`.
-2. **Clean Builds**: Delete existing `dist/` and `build/` directories.
-3. **Build Package**: `python -m build`
-4. **Upload**: `twine upload dist/*`
+1. **Verify State**: Run the "Pre-Release Verification" steps listed above.
+2. **Bump Version**: Update the `version` field in `pyproject.toml`.
+3. **Clean Builds**: Delete existing `dist/` and `build/` directories.
+4. **Build Package**: `python -m build`
+5. **Upload**: `twine upload dist/*`
 
 ## CI/CD Architecture
 
