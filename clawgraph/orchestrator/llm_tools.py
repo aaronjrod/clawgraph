@@ -33,7 +33,9 @@ class CompleteArgs(BaseModel):
 class OrchestratorTools:
     """Tools available to the Orchestrator LLM to manage workflow state."""
 
-    def __init__(self, bag_manager: BagManager, signal_manager: SignalManager, contract: Any = None):
+    def __init__(
+        self, bag_manager: BagManager, signal_manager: SignalManager, contract: Any = None
+    ):
         self.bag_manager = bag_manager
         self.signal_manager = signal_manager
         self.contract = contract
@@ -42,7 +44,13 @@ class OrchestratorTools:
         """Executes a node, processes its output, and handles state/telemetry updates."""
         node_id = args.get("node_id")
         if not node_id or not isinstance(node_id, str):
-            return self.escalate(state, {"reason": "Missing or invalid node_id in dispatch_node", "failure_class": "LOGIC_ERROR"})
+            return self.escalate(
+                state,
+                {
+                    "reason": "Missing or invalid node_id in dispatch_node",
+                    "failure_class": "LOGIC_ERROR",
+                },
+            )
         updates: dict[str, Any] = {"current_node_id": node_id}
 
         # Pull state vars
@@ -67,7 +75,9 @@ class OrchestratorTools:
                 if isinstance(entry, str):
                     return True
                 if isinstance(entry, dict):
-                    return bool(entry.get("domain", "") == domain or "public" in entry.get("tags", []))
+                    return bool(
+                        entry.get("domain", "") == domain or "public" in entry.get("tags", [])
+                    )
                 return False
 
             missing = [r for r in node_meta.requires if not _is_visible(archive.get(r), bag_name)]
@@ -210,7 +220,9 @@ class OrchestratorTools:
                 if isinstance(entry, str):
                     return True
                 if isinstance(entry, dict):
-                    return bool(entry.get("domain", "") == domain or "public" in entry.get("tags", []))
+                    return bool(
+                        entry.get("domain", "") == domain or "public" in entry.get("tags", [])
+                    )
                 return False
 
             for stalled_id in stalled_queue:
@@ -232,7 +244,9 @@ class OrchestratorTools:
                     continue
 
                 # Check if all prereqs are now in the archive
-                current_archive: dict[str, Any] = updates.get("document_archive", state.get("document_archive", {})) or {}
+                current_archive: dict[str, Any] = (
+                    updates.get("document_archive", state.get("document_archive", {})) or {}
+                )
                 missing = [
                     r for r in meta.requires if not _check_vis(current_archive.get(r), bag_name)
                 ]
