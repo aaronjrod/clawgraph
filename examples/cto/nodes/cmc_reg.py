@@ -1,3 +1,4 @@
+from typing import Any
 from clawgraph import ClawOutput, Signal, clawnode
 from clawgraph.core.models import HumanRequest
 from .llm_utils import run_cto_llm_node
@@ -9,7 +10,7 @@ from .llm_utils import run_cto_llm_node
     requires=["stability_test_report_q1"],
     skills=["cmc_reg/stability_analysis.md"]
 )
-def manage_stability(state: dict) -> ClawOutput:
+def manage_stability(state: dict[str, Any]) -> ClawOutput:
     return run_cto_llm_node(
         node_id="manage_stability",
         description="Monitors product stability data and flags deviations in impurity profiles.",
@@ -24,7 +25,7 @@ def manage_stability(state: dict) -> ClawOutput:
     skills=["cmc_reg/module_3_authoring.md"],
     tools=["pdf_parser"],
 )
-def author_mod3(state: dict) -> ClawOutput:
+def author_mod3(state: dict[str, Any]) -> ClawOutput:
     return run_cto_llm_node(
         node_id="mod3_author",
         description="Authors Module 3 technical documentation.",
@@ -39,7 +40,7 @@ def author_mod3(state: dict) -> ClawOutput:
     skills=["cmc_reg/drug_substance_process_validation.md"],
     tools=["stats_calc"],
 )
-def validate_process(state: dict) -> ClawOutput:
+def validate_process(state: dict[str, Any]) -> ClawOutput:
     return run_cto_llm_node(
         node_id="process_val",
         description="Validates drug substance manufacturing processes.",
@@ -53,7 +54,7 @@ def validate_process(state: dict) -> ClawOutput:
     bag="cmc_regulatory",
     requires=["batch_record"],
 )
-def qc_batch(state: dict) -> ClawOutput:
+def qc_batch(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "batch_record" not in archive:
         return ClawOutput(

@@ -1,7 +1,7 @@
-import pytest
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, Signal
 from clawgraph.orchestrator.graph import ClawBag
+
 
 class TestHUDSnapshot:
     """F-REQ-29: Verification of the get_hud_snapshot() API."""
@@ -30,11 +30,11 @@ class TestHUDSnapshot:
         mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Finish.")
 
         result = bag.start_job(objective="Test HUD.", thread_id="hud-thread")
-        
+
         # After job starts/completes
         snapshot_alive = bag.get_hud_snapshot(thread_id="hud-thread")
         assert "nodes" in snapshot_alive
-        
+
         worker_node = next(n for n in snapshot_alive["nodes"] if n["id"] == "worker")
         assert worker_node["status"] == "DONE"
         assert "HUD update" in worker_node["summary"]

@@ -1,13 +1,14 @@
 import os
 import shutil
 
+
 def reset_demo():
     print("=== ClawGraph Demo Reset ===")
-    
+
     # Path to generated artifacts
     base_dir = os.path.dirname(os.path.abspath(__file__))
     generated_dir = os.path.join(base_dir, "artifacts", "generated")
-    
+
     if os.path.exists(generated_dir):
         print(f"Clearing generated artifacts in: {generated_dir}")
         shutil.rmtree(generated_dir)

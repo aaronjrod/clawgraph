@@ -1,6 +1,5 @@
 """Tests for ClawBag — setup, compilation, execution, repr, audit/rollback, summary."""
 
-import pytest
 
 from conftest import (
     crashing_node,
@@ -12,7 +11,6 @@ from conftest import (
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, Signal
 from clawgraph.orchestrator.graph import ClawBag
-
 
 # ── ClawBag Setup Tests ──────────────────────────────────────────────────────
 
@@ -79,7 +77,7 @@ class TestClawBagExecution:
     def test_start_job_success(self, mock_gemini):
         bag = ClawBag(name="test_bag")
         bag.manager.register_node(success_node)
-        
+
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "success_node"}, text="Thinking: Dispatch.")
         mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Done.")
 
@@ -103,7 +101,7 @@ class TestClawBagExecution:
     def test_start_job_with_failing_node(self, mock_gemini):
         bag = ClawBag(name="test_bag")
         bag.manager.register_node(failing_node)
-        
+
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "failing_node"}, text="Thinking: Dispatch.")
         mock_gemini.add_expected_call("escalate", {"reason": "Node failed.", "failure_class": "LOGIC_ERROR"}, text="Thinking: Escalating.")
 
@@ -137,10 +135,10 @@ class TestClawBagExecution:
             delivered.append(req)
 
         bag.register_hitl_handler(handler)
-        
+
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "hold_node"}, text="Thinking: Dispatch.")
         mock_gemini.add_expected_call("suspend", {"human_request_message": "Needs human look."}, text="Thinking: Suspending.")
-        
+
         result = bag.start_job(objective="HITL test.")
         assert result.get("suspended") is True
         assert len(delivered) == 1

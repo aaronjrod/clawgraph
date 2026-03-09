@@ -1,4 +1,3 @@
-import pytest
 
 """End-to-end integration test — exercises the full ClawBag lifecycle.
 
@@ -120,10 +119,10 @@ class TestE2EWithHITL:
             delivered.append(req)
 
         bag.register_hitl_handler(handler)
-        
+
         # Prime mock to suspend
         mock_gemini.add_expected_call("suspend", {"human_request_message": "Approve deployment?"}, text="Thinking: This is a sensitive operation, I need human approval.")
-        
+
         result = bag.start_job(objective="Deploy with approval.")
 
         assert result.get("suspended") is True
@@ -160,12 +159,12 @@ class TestE2ENeedInfoRetry:
             )
 
         bag.manager.register_node(clarify_node)
-        
+
         # Prime mock to dispatch twice
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "clarify_node"}, text="Thinking: First attempt, might need info.")
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "clarify_node"}, text="Thinking: Retrying after receiving info.")
         mock_gemini.add_expected_call("complete", {"final_summary": "Done after retry"}, text="Thinking: Work is now complete.")
-        
+
         result = bag.start_job(objective="Clarify and produce.", max_iterations=5)
 
         # The node should have been called at least twice (once NEED_INFO, once DONE)
@@ -214,13 +213,13 @@ class TestE2EAggregatorPartialCommit:
             )
 
         bag.manager.register_node(quality_gate)
-        
+
         # Aggregator emits PARTIAL. In LLM mode, PARTIAL isn't a special routing signal anymore,
         # it just means the node finished its turn with partial results.
         # The Orchestrator decides whether to complete or dispatch more.
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "quality_gate"}, text="Thinking: Running the quality gate aggregator.")
         mock_gemini.add_expected_call("complete", {"final_summary": "Aggregated"}, text="Thinking: Aggregation complete, even with partial results.")
-        
+
         result = bag.start_job(objective="Run quality gate.")
 
         archive = result.get("document_archive", {})

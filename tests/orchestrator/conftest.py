@@ -1,8 +1,8 @@
-import pytest
-from unittest.mock import MagicMock
-from google.genai import types
-
 from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+import pytest
+
 
 class MockGeminiClient:
     def __init__(self):
@@ -18,7 +18,7 @@ class MockGeminiClient:
     def generate_content(self, model, contents, config=None):
         if self.expected_responses:
             return self.expected_responses.pop(0)
-        
+
         # Default fallback to complete if nothing queued
         call = SimpleNamespace(name="complete", args={"final_summary": "Mock auto-complete"})
         resp = SimpleNamespace(function_calls=[call], text="Thinking: No more tasks.")
@@ -27,9 +27,9 @@ class MockGeminiClient:
 @pytest.fixture
 def mock_gemini(monkeypatch):
     mock_client = MockGeminiClient()
-    
+
     def mock_init(*args, **kwargs):
         return mock_client
-        
+
     monkeypatch.setattr("google.genai.Client", mock_init)
     return mock_client

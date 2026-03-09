@@ -5,7 +5,6 @@ failure class, the Orchestrator should escalate it to the Super-Orchestrator
 for review or remediation.
 """
 
-import pytest
 
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import (
@@ -39,7 +38,7 @@ class TestGuardrailViolation:
             )
 
         bag.manager.register_node(rogue_node)
-        
+
         # 1. Dispatch node
         # 2. Node returns FAILED with GUARDRAIL_VIOLATION
         # 3. Orchestrator escalates
@@ -92,7 +91,7 @@ class TestGuardrailViolation:
             )
 
         bag.manager.register_node(agg_node)
-        
+
         # 1. Dispatch aggregator
         # 2. Returns PARTIAL with GUARDRAIL_VIOLATION in breakdown
         # 3. Orchestrator escalates based on the partial signal's error class
@@ -104,7 +103,7 @@ class TestGuardrailViolation:
         # Check eager commit occurred for the valid branch
         archive = result.get("document_archive", {})
         assert "safe_task_result" in archive
-        
+
         # Check escalation state
         escalation = result.get("pending_escalation")
         assert escalation is not None

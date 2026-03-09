@@ -1,7 +1,7 @@
-import pytest
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, Signal
 from clawgraph.orchestrator.graph import ClawBag
+
 
 class TestMaxIterations:
     """B-REQ-10: Enforcement of max_iterations to prevent infinite loops."""
@@ -23,7 +23,7 @@ class TestMaxIterations:
         # Mockgemini setup: Dispatch looper 3 times, then the orchestrator should stop.
         for _ in range(3):
             mock_gemini.add_expected_call("dispatch_node", {"node_id": "looper"}, text="Still looping.")
-        
+
         # We don't expect a 4th call to dispatch_node.
         # The job should finish with an escalation or a specific status.
         result = bag.start_job(objective="Never end.", max_iterations=3)

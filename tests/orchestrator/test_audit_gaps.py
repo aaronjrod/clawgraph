@@ -1,7 +1,7 @@
 """Audit gap TDD tests -- Gaps 2, 3, 4, 5 adapted for LLM Orchestrator Tools."""
 
-import pytest
 
+from typing import Any, cast
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import (
     AggregatorOutput,
@@ -21,20 +21,20 @@ class TestGap2HITLContextInjection:
         bag = ClawBag(name="suspend_bag")
         @clawnode(id="gate", description="Suspension gate.", bag="suspend_bag")
         def gate(s): return ClawOutput(
-            signal=Signal.HOLD_FOR_HUMAN, 
+            signal=Signal.HOLD_FOR_HUMAN,
             node_id="gate",
             orchestrator_summary="Waiting for human.",
             human_request={"message": "Needs human look."}
         )
         bag.manager.register_node(gate)
-        
+
         # We expect the LLM to see the HOLD_FOR_HUMAN and decide to suspend.
         mock_gemini.add_expected_call(
-            "suspend", 
-            {"human_request_message": "Needs human look."}, 
+            "suspend",
+            {"human_request_message": "Needs human look."},
             text="Thinking: Node requested human input, so I will suspend."
         )
-        
+
         result = bag.start_job(objective="Test suspension context.")
         assert result.get("suspended") is True
 
@@ -43,23 +43,23 @@ class TestGap3EscalationPolicyEnforcement:
     def test_route_signal_respects_need_info_retries(self, mock_gemini):
         """Gap 3: LLM manages retries by choosing to dispatch again."""
         bag = ClawBag(name="retry_bag")
-        
+
         @clawnode(id="flaky", description="Flaky node.", bag="retry_bag")
         def flaky(s): return ClawOutput(
-            signal=Signal.NEED_INFO, 
+            signal=Signal.NEED_INFO,
             node_id="flaky",
             orchestrator_summary="Need more info.",
             info_request={"question": "What is x?", "context": "x is needed for flaky."}
         )
         bag.manager.register_node(flaky)
-        
+
         # 1. Dispatch flaky (returns NEED_INFO)
         # 2. Dispatch flaky again (returns NEED_INFO)
         # 3. Escalate (too many retries)
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "flaky"}, text="Thinking: Retrying once.")
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "flaky"}, text="Thinking: Retrying twice.")
         mock_gemini.add_expected_call("escalate", {"reason": "Too many retries", "failure_class": "TOOL_FAILURE"}, text="Thinking: I give up.")
-        
+
         result = bag.start_job(objective="Test retries.", max_iterations=5)
         assert "pending_escalation" in result
 
@@ -69,16 +69,16 @@ class TestGap4PartialCommitPolicy:
         """Gap 4: Eager policy commits DONE branches immediately even if root is PARTIAL."""
         bag = ClawBag(name="test_bag")
         tools = OrchestratorTools(bag_manager=bag.manager, signal_manager=bag.signal_manager)
-        
-        state: BagState = { # type: ignore[typeddict-item]
+
+        state: BagState = {
             "bag_name": "test_bag",
             "document_archive": {},
             "timeline": []
         }
-        
+
         # Mock result of a node that returns AggregatorOutput
         @clawnode(id="agg", description="Aggregator node.", bag="test_bag")
-        def agg_node(s): 
+        def agg_node(s):
             return AggregatorOutput(
                 signal=Signal.PARTIAL,
                 node_id="agg",
@@ -92,10 +92,10 @@ class TestGap4PartialCommitPolicy:
                 ]
             )
         bag.manager.register_node(agg_node)
-        
+
         updates = tools.dispatch_node(state, {"node_id": "agg"})
         archive = updates.get("document_archive", {})
-        
+
         assert "b1_result" in archive
         assert archive["b1_result"]["uri"] == "uri://1"
         assert "b2_result" not in archive
@@ -104,15 +104,15 @@ class TestGap4PartialCommitPolicy:
         """Gap 4: Atomic policy only commits when root is DONE."""
         bag = ClawBag(name="test_bag")
         tools = OrchestratorTools(bag_manager=bag.manager, signal_manager=bag.signal_manager)
-        
-        state: BagState = { # type: ignore[typeddict-item]
+
+        state: BagState = {
             "bag_name": "test_bag",
             "document_archive": {},
             "timeline": []
         }
-        
+
         @clawnode(id="agg", description="Atomic aggregator.", bag="test_bag")
-        def agg_node(s): 
+        def agg_node(s):
             return AggregatorOutput(
                 signal=Signal.PARTIAL,
                 node_id="agg",
@@ -125,10 +125,10 @@ class TestGap4PartialCommitPolicy:
                 ]
             )
         bag.manager.register_node(agg_node)
-        
+
         updates = tools.dispatch_node(state, {"node_id": "agg"})
         archive = updates.get("document_archive", {})
-        
+
         assert "b1_result" not in archive # Not DONE yet
 
 
@@ -159,7 +159,7 @@ class TestGap5MultiDomainTagVisibility:
         tools = OrchestratorTools(bag_manager=bag.manager, signal_manager=bag.signal_manager)
 
         # State with a document from another domain, not tagged public.
-        state: BagState = {  # type: ignore[typeddict-item]
+        state: BagState = {
             "bag_name": "test_bag",
             "current_node_id": "consumer_node",
             "document_archive": {
@@ -176,7 +176,7 @@ class TestGap5MultiDomainTagVisibility:
             "timeline": [],
         }
 
-        updates = tools.dispatch_node(state, {"node_id": "consumer_node"})
+        updates = tools.dispatch_node(cast(dict[str, Any], state), {"node_id": "consumer_node"})
         output = updates.get("current_output", {})
 
         # It should stall because it cannot see the document.

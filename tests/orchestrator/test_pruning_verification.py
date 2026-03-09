@@ -1,7 +1,7 @@
-import pytest
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, Signal
 from clawgraph.orchestrator.graph import ClawBag
+
 
 class TestPruningVerification:
     """F-REQ-16: Verification that raw tool outputs are pruned after summary generation."""
@@ -43,6 +43,6 @@ class TestPruningVerification:
 
         # If F-REQ-16 is implemented, we should see evidence in the final state
         # that raw tool outputs were pruned.
-        # This is a TDD skeleton; we'll refine the assertion once we define the specific 
+        # This is a TDD skeleton; we'll refine the assertion once we define the specific
         # structure of 'pruned' state keys.
         assert "heavy_worker" in result.get("completed_nodes", [])

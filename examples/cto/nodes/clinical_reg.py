@@ -1,3 +1,4 @@
+from typing import Any
 from clawgraph import ClawOutput, Signal, clawnode
 from clawgraph.core.models import HumanRequest
 from .llm_utils import run_cto_llm_node
@@ -9,7 +10,7 @@ from .llm_utils import run_cto_llm_node
     requires=["protocol_v1"],
     skills=["clinical_reg/protocol_review.md"]
 )
-def manage_ind_submission(state: dict) -> ClawOutput:
+def manage_ind_submission(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "protocol_v1" not in archive:
         return ClawOutput(signal=Signal.HOLD_FOR_HUMAN, node_id="manage_ind_submission", orchestrator_summary="Awaiting protocol upload.")
@@ -22,7 +23,7 @@ def manage_ind_submission(state: dict) -> ClawOutput:
     skills=["clinical_reg/protocol_development.md"],
     tools=["google_search"],
 )
-def benchmark_protocol(state: dict) -> ClawOutput:
+def benchmark_protocol(state: dict[str, Any]) -> ClawOutput:
     return run_cto_llm_node("protocol_benchmark", "Drafts and benchmarks clinical protocols.", state, ["clinical_reg/protocol_development.md"])
 
 @clawnode(
@@ -32,7 +33,7 @@ def benchmark_protocol(state: dict) -> ClawOutput:
     skills=["clinical_reg/ib_management.md"],
     tools=["pdf_parser", "pubmed_api"],
 )
-def author_ib(state: dict) -> ClawOutput:
+def author_ib(state: dict[str, Any]) -> ClawOutput:
     return run_cto_llm_node("ib_authoring", "Authors the Investigator's Brochure.", state, ["clinical_reg/ib_management.md"])
 
 @clawnode(
@@ -42,7 +43,7 @@ def author_ib(state: dict) -> ClawOutput:
     skills=["clinical_reg/annual_reports_meetings.md"],
     tools=["pdf_parser"],
 )
-def generate_annual_report(state: dict) -> ClawOutput:
+def generate_annual_report(state: dict[str, Any]) -> ClawOutput:
     return run_cto_llm_node("annual_report", "Generates annual regulatory reports.", state, ["clinical_reg/annual_reports_meetings.md"])
 
 @clawnode(
@@ -53,7 +54,7 @@ def generate_annual_report(state: dict) -> ClawOutput:
     skills=["clinical_reg/fda_response_coordinator.md"],
     tools=["pdf_parser", "gmail_api"],
 )
-def coordinate_fda_response(state: dict) -> ClawOutput:
+def coordinate_fda_response(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "fda_feedback_letter" not in archive:
         return ClawOutput(

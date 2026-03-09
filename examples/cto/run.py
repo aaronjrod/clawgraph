@@ -2,13 +2,13 @@ import inspect
 import logging
 import os
 import sys
-import threading
 from datetime import datetime
 
 # Add parent dir to path so clawgraph modules load
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Import nodes to register them within the bags
@@ -35,7 +35,7 @@ print(f"[LOGS] Simulation logs being written to: {LOG_FILE}")
 def seed_initial_data(bags):
     """Seed the document archive with initial artifacts so nodes don't stall immediately."""
     print("\n--- Seeding Initial Artifacts ---")
-    
+
     # Generic seeds
     seeds = {
         "source_docs": "file:///seed/source_docs.pdf",
@@ -46,7 +46,7 @@ def seed_initial_data(bags):
         "unformatted_modules": "file:///seed/module_drafts.zip",
         "regional_clearance": "file:///seed/regional_dispatch.json"
     }
-    
+
     return seeds
 
 def main():
@@ -104,7 +104,7 @@ def main():
         # Inject seeds into the initial archive and signal manager for HUD visibility
         for k, v in seed_data.items():
             bag.signal_manager.record_input_artifact(k, v)
-        
+
         # start_job accepts 'inputs' dict
         bag.start_job(objective=desc, inputs=seed_data)
         time.sleep(2)
@@ -112,7 +112,7 @@ def main():
     print("\n" + "="*40)
     print("         SIMULATION COMPLETE")
     print("========================================")
-    print(f"HUD: http://localhost:8000")
+    print("HUD: http://localhost:8000")
     print("The system is now fully automated and interactive.\n")
 
     try:

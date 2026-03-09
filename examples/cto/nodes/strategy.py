@@ -1,3 +1,4 @@
+from typing import Any
 from clawgraph import ClawOutput, Signal, clawnode
 from clawgraph.core.models import HumanRequest
 from .llm_utils import run_cto_llm_node
@@ -10,7 +11,7 @@ from .llm_utils import run_cto_llm_node
     tools=["google_search"],
     requires=["clinical_data"]
 )
-def assess_risk(state: dict) -> ClawOutput:
+def assess_risk(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "clinical_data" not in archive:
         return ClawOutput(
@@ -34,7 +35,7 @@ def assess_risk(state: dict) -> ClawOutput:
     tools=["pdf_parser"],
     requires=["preliminary_label"]
 )
-def negotiate_label(state: dict) -> ClawOutput:
+def negotiate_label(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "preliminary_label" not in archive:
         return ClawOutput(
@@ -58,7 +59,7 @@ def negotiate_label(state: dict) -> ClawOutput:
     tools=["pdf_parser"],
     requires=["safety_signals"]
 )
-def manage_ccds(state: dict) -> ClawOutput:
+def manage_ccds(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "safety_signals" not in archive:
         return ClawOutput(

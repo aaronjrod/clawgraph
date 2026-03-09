@@ -28,7 +28,7 @@ def analyze_stability(state):
     description="Aggregates parallel impurity and stability checks.",
     bag="cmc_regulatory"
 )
-def cmc_quality_gate(state: dict) -> AggregatorOutput:
+def cmc_quality_gate(state: dict[str, Any]) -> AggregatorOutput:
     builder = AggregatorBuilder(aggregator_id="cmc_quality_gate", partial_commit_policy="eager")
 
     # Fan-out

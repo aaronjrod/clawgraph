@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def run_cto_llm_node(
     node_id: str, 
     description: str, 
-    state: dict, 
+    state: dict[str, Any], 
     skills: list[str] | None = None
 ) -> ClawOutput:
     """Executes a dynamic LLM call for a CTO node."""

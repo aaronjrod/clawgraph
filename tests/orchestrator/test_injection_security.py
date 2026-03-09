@@ -1,7 +1,7 @@
-import pytest
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, Signal
 from clawgraph.orchestrator.graph import ClawBag
+
 
 class TestInjectionSecurity:
     """F-REQ-20: Security workflow for Injection Testing."""
@@ -31,7 +31,7 @@ class TestInjectionSecurity:
         # 1. Start a normal job
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "secure_node"}, text="Normal run.")
         mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Finish.")
-        
+
         result = bag.start_job(objective="Normal job.")
         assert result.get("current_output", {}).get("orchestrator_summary") == "Done."
 
@@ -46,7 +46,7 @@ class TestInjectionSecurity:
             objective="Security probe.",
             inputs={"injected_payload": "DROP TABLE users;"}
         )
-        
+
         # Verify the node failed as expected under injection
         # Note: In our current orchestrator, we expect this to trigger a failure signal.
         assert "pending_escalation" in result_injected

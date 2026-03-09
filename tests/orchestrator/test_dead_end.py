@@ -4,7 +4,6 @@ When a producer node FAILs, consumers whose prerequisites can never be
 satisfied should be cascaded to FAILED instead of staying in stalled_queue.
 """
 
-import pytest
 
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import (
@@ -51,7 +50,7 @@ class TestDeadEndCascade:
 
         bag.manager.register_node(producer)
         bag.manager.register_node(consumer)
-        
+
         # 1. Dispatch producer (fails)
         # 2. Orchestrator detects failure, cascades consumer to FAILED (DEAD_END)
         # 3. Escalates
@@ -100,7 +99,7 @@ class TestDeadEndCascade:
 
         bag.manager.register_node(failing_node)
         bag.manager.register_node(unrelated_consumer)
-        
+
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "failing_node"}, text="Thinking: This node failed.")
         mock_gemini.add_expected_call("escalate", {"reason": "Logic error.", "failure_class": "LOGIC_ERROR"}, text="Thinking: Failing node failed. Unrelated consumer is still stalled on something else.")
 
@@ -144,7 +143,7 @@ class TestDeadEndCascade:
 
         bag.manager.register_node(doomed_producer)
         bag.manager.register_node(doomed_consumer)
-        
+
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "doomed_producer"}, text="Thinking: Producer failure.")
         mock_gemini.add_expected_call("escalate", {"reason": "System crash", "failure_class": "SYSTEM_CRASH"}, text="Thinking: Escalating.")
 
@@ -202,7 +201,7 @@ class TestDeadEndCascade:
         bag.manager.register_node(breaker)
         bag.manager.register_node(dep_a)
         bag.manager.register_node(dep_b)
-        
+
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "breaker"}, text="Thinking: Breaker failed.")
         mock_gemini.add_expected_call("escalate", {"reason": "Breaking cascade.", "failure_class": "LOGIC_ERROR"}, text="Thinking: Cascading dep_a and dep_b.")
 

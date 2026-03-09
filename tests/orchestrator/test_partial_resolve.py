@@ -4,7 +4,6 @@ PARTIAL signals with eager commit policy store artifacts, so they should
 also trigger _resolve_stalled to unblock waiting consumers.
 """
 
-import pytest
 
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import (
@@ -140,7 +139,7 @@ class TestPartialResolve:
 
         bag.manager.register_node(atomic_agg)
         bag.manager.register_node(atomic_consumer)
-        
+
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "atomic_agg"}, text="Thinking: Dispatch.")
         mock_gemini.add_expected_call("escalate", {"reason": "Partial failure.", "failure_class": "LOGIC_ERROR"}, text="Thinking: Escalating.")
 

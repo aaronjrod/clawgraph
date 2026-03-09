@@ -1,3 +1,4 @@
+from typing import Any
 from clawgraph import ClawOutput, Signal, clawnode
 from clawgraph.core.models import HumanRequest
 from .llm_utils import run_cto_llm_node
@@ -10,7 +11,7 @@ from .llm_utils import run_cto_llm_node
     tools=["gmail_api"],
     requires=["milestone_confirmation"]
 )
-def write_pr(state: dict) -> ClawOutput:
+def write_pr(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "milestone_confirmation" not in archive:
         return ClawOutput(

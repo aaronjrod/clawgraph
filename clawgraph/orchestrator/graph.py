@@ -13,7 +13,7 @@ import logging
 import operator
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any, TypedDict, Annotated
+from typing import Annotated, Any, TypedDict
 
 from clawgraph.bag.manager import BagManager
 from clawgraph.bag.skills import SkillsContextManager

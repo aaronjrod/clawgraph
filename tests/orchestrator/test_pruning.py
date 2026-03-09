@@ -4,7 +4,6 @@ After a node completes with DONE, current_output should be cleared to
 prevent raw output blobs from accumulating in state.
 """
 
-import pytest
 
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, Signal
@@ -34,11 +33,11 @@ class TestMemoryPruning:
         def step_two(state: dict) -> ClawOutput:  # type: ignore[type-arg]
             call_order.append("step_two")
             # Verify that state was pruned from previous node
-            current = state.get("current_output", {})
+            _current = state.get("current_output", {})
             # In the agentic model, current_output contains the result of the LAST turn.
             # If step_one just finished, current_output will be step_one's result.
-            # HOWEVER, the TDD requirement F-REQ-16 specifically asked for pruning 
-            # to prevent raw output blobs from accumulating. 
+            # HOWEVER, the TDD requirement F-REQ-16 specifically asked for pruning
+            # to prevent raw output blobs from accumulating.
             # Our llm_tools.py dispatch_node updates updates['current_output'] = result.model_dump().
             # So step_two WILL see step_one's output.
             return ClawOutput(
@@ -50,7 +49,7 @@ class TestMemoryPruning:
 
         bag.manager.register_node(step_one)
         bag.manager.register_node(step_two)
-        
+
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "step_one"}, text="Thinking: Step 1.")
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "step_two"}, text="Thinking: Step 2.")
         mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Finished.")
@@ -85,7 +84,7 @@ class TestMemoryPruning:
 
         bag.manager.register_node(node_a)
         bag.manager.register_node(node_b)
-        
+
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "node_a"}, text="Thinking: A.")
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "node_b"}, text="Thinking: B.")
         mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Done.")

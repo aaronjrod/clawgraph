@@ -4,7 +4,6 @@ inject_info() allows the SO to answer a NEED_INFO question by writing
 the answer into continuation_context and re-enqueuing the node.
 """
 
-import pytest
 
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, InfoRequest, Signal

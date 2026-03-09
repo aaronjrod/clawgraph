@@ -1,3 +1,4 @@
+from typing import Any
 from clawgraph import ClawOutput, Signal, clawnode
 from clawgraph.core.models import HumanRequest
 from .llm_utils import run_cto_llm_node
@@ -10,7 +11,7 @@ from .llm_utils import run_cto_llm_node
     tools=["pdf_parser"],
     requires=["source_docs"]
 )
-def publish_ectd(state: dict) -> ClawOutput:
+def publish_ectd(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "source_docs" not in archive:
         return ClawOutput(
@@ -34,7 +35,7 @@ def publish_ectd(state: dict) -> ClawOutput:
     tools=["pdf_parser"],
     requires=["unformatted_modules"]
 )
-def format_submission(state: dict) -> ClawOutput:
+def format_submission(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "unformatted_modules" not in archive:
         return ClawOutput(
@@ -58,7 +59,7 @@ def format_submission(state: dict) -> ClawOutput:
     tools=["gmail_api"],
     requires=["regional_clearance"]
 )
-def coordinate_global(state: dict) -> ClawOutput:
+def coordinate_global(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "regional_clearance" not in archive:
         return ClawOutput(
@@ -80,7 +81,7 @@ def coordinate_global(state: dict) -> ClawOutput:
     bag="reg_ops",
     requires=["submission_plan"],
 )
-def publish_submission(state: dict) -> ClawOutput:
+def publish_submission(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "submission_plan" not in archive:
         return ClawOutput(

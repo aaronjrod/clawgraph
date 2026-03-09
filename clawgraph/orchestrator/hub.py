@@ -11,8 +11,6 @@ Architecture ref: 05_ARCHITECTURE.md §4, §6, §10.2
 from __future__ import annotations
 
 import logging
-import time
-import traceback
 from collections.abc import Callable
 from typing import Any
 
@@ -20,8 +18,6 @@ from langgraph.graph import END, StateGraph
 
 from clawgraph.bag.manager import BagManager
 from clawgraph.core.models import (
-    AggregatorOutput,
-    ArchiveEntry,
     BagContract,
     ClawOutput,
     ErrorDetail,
@@ -72,7 +68,7 @@ def route_signal(state: BagState) -> str:
     output = state.get("current_output", {})
     signal = output.get("signal")
 
-    # Hub-and-Spoke Principle: 
+    # Hub-and-Spoke Principle:
     # Only signals from the 'orchestrator' node itself trigger graph termination (Complete/Suspend/Escalate).
     # Signals from leaf nodes ALWAYS loop back to the orchestrator for the next turn.
     if output.get("node_id") != "orchestrator":
@@ -227,7 +223,7 @@ def build_hub_graph(
     # Register nodes.
     # NOTE: type: ignore needed because LangGraph's strict overloads
     # don't fully match our closure-based node pattern.
-    graph.add_node(ROUTE_NEXT_NODE, make_orchestrator_node(bag_manager, signal_manager, contract))  # type: ignore[call-overload]
+    graph.add_node(ROUTE_NEXT_NODE, make_orchestrator_node(bag_manager, signal_manager, contract))
     graph.add_node(ROUTE_ESCALATE, _make_escalate_node())  # type: ignore[call-overload]
     graph.add_node(ROUTE_SUSPEND, _make_suspend_node(hitl_handler, timeline_buffer))  # type: ignore[call-overload]
     graph.add_node(ROUTE_COMPLETE, _make_complete_node())  # type: ignore[call-overload]
