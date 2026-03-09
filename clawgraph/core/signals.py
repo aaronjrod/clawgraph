@@ -37,6 +37,7 @@ class NodeStatus(StrEnum):
     STALLED = "STALLED"
     SUSPENDED = "SUSPENDED"  # NEED_INFO or HOLD_FOR_HUMAN
     STALE = "STALE"  # After crash/reset
+    DEAD_END = "DEAD_END"  # Prerequisite failure (cascaded)
 
 
 # Map from output Signal → internal NodeStatus
@@ -87,10 +88,22 @@ class SignalManager:
         self._result_uris: dict[str, str] = {}  # node_id -> result_uri (for linkage)
         self._timeline: TimelineBuffer | None = timeline_buffer
         self._active_thread_id: str | None = None
+        self._chat_history: list[dict[str, Any]] = []
 
     def set_active_thread(self, thread_id: str | None) -> None:
         """Set the active job thread for timeline event association."""
         self._active_thread_id = thread_id
+
+    def record_chat(self, sender: str, text: str) -> None:
+        """Record an external chat message (e.g. from HUD) into the bag context."""
+        entry = {"sender": sender, "text": text, "timestamp": datetime.now().isoformat()}
+        self._chat_history.append(entry)
+        logger.info("Chat recorded in SignalManager: [%s] %s", sender, text)
+
+    def record_input_artifact(self, artifact_id: str, uri: str) -> None:
+        """Record an initial input artifact for HUD visibility."""
+        self._result_uris[artifact_id] = uri
+        logger.info("Input artifact recorded in SignalManager: %s -> %s", artifact_id, uri)
 
     def process_signal(self, output: ClawOutput) -> bool:
         """Process a ClawOutput and update internal state.
@@ -198,6 +211,23 @@ class SignalManager:
                 summary=f"{node_id} is waiting on prerequisites.",
             )
 
+    def mark_dead_end(self, node_id: str) -> None:
+        """Mark a node as DEAD_END (prerequisite failure)."""
+        state = self._node_states.get(node_id)
+        if state is None:
+            state = NodeState(node_id=node_id)
+            self._node_states[node_id] = state
+        state.status = NodeStatus.DEAD_END
+        state.updated_at = datetime.now()
+
+        if self._timeline and self._active_thread_id:
+            self._timeline.record_orchestrator_event(
+                thread_id=self._active_thread_id,
+                node_id=node_id,
+                status="DEAD_END",
+                summary=f"{node_id} cascaded to failure due to prerequisite failure.",
+            )
+
     def get_node_state(self, node_id: str) -> NodeState | None:
         """Get the current state of a specific node."""
         return self._node_states.get(node_id)
@@ -291,6 +321,27 @@ class SignalManager:
         return [
             nid for nid, state in self._node_states.items() if state.status == NodeStatus.RUNNING
         ]
+
+    @property
+    def overall_status(self) -> str:
+        """Calculate the aggregate status of the bag based on its nodes' states."""
+        if not self._node_states:
+            return "IDLE"
+
+        states = [n.status for n in self._node_states.values()]
+
+        if NodeStatus.RUNNING in states:
+            return NodeStatus.RUNNING.value
+        if NodeStatus.SUSPENDED in states:
+            return NodeStatus.SUSPENDED.value
+        if NodeStatus.STALLED in states:
+            return NodeStatus.STALLED.value
+        if NodeStatus.FAILED in states:
+            return NodeStatus.FAILED.value
+        if NodeStatus.DONE in states:
+            return NodeStatus.DONE.value
+
+        return "IDLE"
 
     # -- Implicit Linkage Engine (Part 7.2) ---------------------------------
 

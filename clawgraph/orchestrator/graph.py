@@ -10,9 +10,10 @@ Architecture ref: 05_ARCHITECTURE.md S2-4, S8
 from __future__ import annotations
 
 import logging
+import operator
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any, TypedDict
+from typing import Annotated, Any, TypedDict
 
 from clawgraph.bag.manager import BagManager
 from clawgraph.bag.skills import SkillsContextManager
@@ -45,7 +46,7 @@ class BagState(TypedDict, total=False):
     bag_manifest: dict[str, Any]  # Tier 1 manifest snapshot (from get_inventory).
     bag_name: str  # Name of this bag (for domain visibility).
     document_archive: dict[str, Any]  # {artifact_id: ArchiveEntry|str} -- pointer registry.
-    phase_history: list[str]  # Sequential accomplishment summaries.
+    phase_history: Annotated[list[str], operator.add]  # Sequential accomplishment summaries.
 
     # ── Execution Queues (Gap 6 / F-REQ-12) ───────────────────────
     current_output: dict[str, Any]  # Serialized ClawOutput from last node.
@@ -54,7 +55,7 @@ class BagState(TypedDict, total=False):
     iteration_count: int  # How many dispatches have occurred.
     ready_queue: list[str]  # Nodes whose prereqs are satisfied.
     stalled_queue: list[str]  # Nodes waiting on prerequisites.
-    completed_nodes: list[str]  # Nodes that have finished (DONE).
+    completed_nodes: Annotated[list[str], operator.add]  # Nodes that have finished (DONE).
 
     # ── Orchestrator ───────────────────────────────────────────────
     orchestrator_prompt: str  # The assembled system prompt.
@@ -64,7 +65,7 @@ class BagState(TypedDict, total=False):
     need_info_tracking: dict[str, Any]  # {node_id: {retries, first_seen}}
 
     # ── Timeline Events (in-state log for observability) ──────────
-    timeline: list[dict[str, Any]]  # Serialized event dicts.
+    timeline: Annotated[list[dict[str, Any]], operator.add]  # Serialized event dicts.
 
     # ── HITL ───────────────────────────────────────────────────────
     human_response: str | None  # Injected by resume_job().

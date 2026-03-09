@@ -19,7 +19,7 @@ from clawgraph.orchestrator.graph import ClawBag
 class TestPartialResolve:
     """PARTIAL + eager commits should trigger prereq re-evaluation."""
 
-    def test_partial_eager_resolves_stalled(self):
+    def test_partial_eager_resolves_stalled(self, mock_gemini):
         """Branch DONE in PARTIAL/eager should unblock a stalled consumer."""
         bag = ClawBag(name="partial_resolve_bag")
 
@@ -73,6 +73,15 @@ class TestPartialResolve:
         bag.manager.register_node(aggregator)
         bag.manager.register_node(lint_consumer)
 
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "aggregator"}, text="Thinking: Dispatch."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "Partial failure.", "failure_class": "LOGIC_ERROR"},
+            text="Thinking: Escalating.",
+        )
+
         result = bag.start_job(objective="Partial resolve.", max_iterations=10)
 
         # lint_consumer should have been unblocked (moved from stalled to ready)
@@ -82,7 +91,7 @@ class TestPartialResolve:
             "lint_consumer should not be stalled after PARTIAL eager commit"
         )
 
-    def test_partial_atomic_does_not_resolve(self):
+    def test_partial_atomic_does_not_resolve(self, mock_gemini):
         """PARTIAL with atomic policy should NOT unblock stalled consumers."""
         bag = ClawBag(name="atomic_bag")
 
@@ -135,6 +144,15 @@ class TestPartialResolve:
 
         bag.manager.register_node(atomic_agg)
         bag.manager.register_node(atomic_consumer)
+
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "atomic_agg"}, text="Thinking: Dispatch."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "Partial failure.", "failure_class": "LOGIC_ERROR"},
+            text="Thinking: Escalating.",
+        )
 
         result = bag.start_job(objective="Atomic no-resolve.", max_iterations=5)
 

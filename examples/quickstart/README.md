@@ -2,7 +2,7 @@
 
 This is a beginner-friendly example demonstrating how to run ClawGraph with real LLM inference and a live visualization HUD!
 
-It uses `google-genai` and `gemini-2.5-flash` to execute a simple 3-node graph:
+It uses `google-genai` and `gemini-3.1-flash-lite-preview` to execute a simple 3-node graph:
 1. **Researcher**: Gathers information about a topic.
 2. **Analyzer**: Synthesizes the research into a strategic plan.
 3. **Writer**: Authors a final markdown report based on the plan.

@@ -12,7 +12,7 @@ from clawgraph.orchestrator.graph import ClawBag
 class TestStateDrift:
     """State drift detection via node_id mismatch."""
 
-    def test_node_id_mismatch_triggers_intervention(self):
+    def test_node_id_mismatch_triggers_intervention(self, mock_gemini):
         """Node returning wrong node_id → synthesized NEED_INTERVENTION."""
         bag = ClawBag(name="drift_bag")
 
@@ -26,17 +26,26 @@ class TestStateDrift:
             )
 
         bag.manager.register_node(honest_node)
+
+        # 1. Dispatch honest_node (logic detects mismatch, returns NEED_INTERVENTION)
+        # 2. Orchestrator sees NEED_INTERVENTION and should escalate.
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "honest_node"}, text="Thinking: Dispatching the node."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "State drift detected.", "failure_class": "SCHEMA_MISMATCH"},
+            text="Thinking: I detected a node ID mismatch, which is a schema violation.",
+        )
+
         result = bag.start_job(objective="Drift test.")
 
-        output = result.get("current_output", {})
-        assert output.get("orchestrator_synthesized") is True, (
-            "Mismatched node_id should produce a synthesized error"
-        )
-        assert output.get("signal") == Signal.NEED_INTERVENTION.value
-        error = output.get("error_detail", {})
-        assert error.get("failure_class") == FailureClass.SCHEMA_MISMATCH.value
+        assert "pending_escalation" in result
+        esc = result["pending_escalation"]
+        assert esc["signal"] == "NEED_INTERVENTION"
+        assert esc["error_detail"]["failure_class"] == FailureClass.SCHEMA_MISMATCH.value
 
-    def test_correct_node_id_passes(self):
+    def test_correct_node_id_passes(self, mock_gemini):
         """Normal execution with matching node_id → no drift."""
         bag = ClawBag(name="clean_bag")
 
@@ -50,6 +59,14 @@ class TestStateDrift:
             )
 
         bag.manager.register_node(good_node)
+
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "good_node"}, text="Thinking: Dispatching good node."
+        )
+        mock_gemini.add_expected_call(
+            "complete", {"final_summary": "Done."}, text="Thinking: Finished."
+        )
+
         result = bag.start_job(objective="Clean test.")
 
         output = result.get("current_output", {})

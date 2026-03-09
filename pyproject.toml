@@ -22,6 +22,8 @@ classifiers = [
 dependencies = [
     "pydantic>=2.0",
     "langgraph>=0.2.0",
+    "google-genai>=0.2.0",
+    "python-dotenv>=1.0.1",
 ]
 
 [project.optional-dependencies]
@@ -34,8 +36,6 @@ dev = [
 examples = [
     "fastapi>=0.110.0",
     "uvicorn>=0.27.1",
-    "google-genai>=0.2.0",
-    "python-dotenv>=1.0.1",
 ]
 
 [tool.setuptools.packages.find]
@@ -63,5 +63,5 @@ warn_return_any = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["langgraph.*", "langchain_core.*"]
+module = ["langgraph.*", "langchain_core.*", "google.*"]
 ignore_missing_imports = true
