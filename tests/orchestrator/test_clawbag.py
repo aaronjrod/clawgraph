@@ -1,6 +1,5 @@
 """Tests for ClawBag — setup, compilation, execution, repr, audit/rollback, summary."""
 
-
 from conftest import (
     crashing_node,
     failing_node,
@@ -78,8 +77,12 @@ class TestClawBagExecution:
         bag = ClawBag(name="test_bag")
         bag.manager.register_node(success_node)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "success_node"}, text="Thinking: Dispatch.")
-        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Done.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "success_node"}, text="Thinking: Dispatch."
+        )
+        mock_gemini.add_expected_call(
+            "complete", {"final_summary": "Done."}, text="Thinking: Done."
+        )
 
         result = bag.start_job(objective="Test run.", inputs={})
 
@@ -91,8 +94,12 @@ class TestClawBagExecution:
         bag = ClawBag(name="test_bag")
         bag.manager.register_node(success_node)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "success_node"}, text="Thinking: Dispatch.")
-        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Done.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "success_node"}, text="Thinking: Dispatch."
+        )
+        mock_gemini.add_expected_call(
+            "complete", {"final_summary": "Done."}, text="Thinking: Done."
+        )
 
         assert not bag.manager._locked
         bag.start_job(objective="Test locking.")
@@ -102,8 +109,14 @@ class TestClawBagExecution:
         bag = ClawBag(name="test_bag")
         bag.manager.register_node(failing_node)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "failing_node"}, text="Thinking: Dispatch.")
-        mock_gemini.add_expected_call("escalate", {"reason": "Node failed.", "failure_class": "LOGIC_ERROR"}, text="Thinking: Escalating.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "failing_node"}, text="Thinking: Dispatch."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "Node failed.", "failure_class": "LOGIC_ERROR"},
+            text="Thinking: Escalating.",
+        )
 
         result = bag.start_job(objective="Fail test.")
         assert "pending_escalation" in result
@@ -116,8 +129,14 @@ class TestClawBagExecution:
         bag = ClawBag(name="test_bag")
         bag.manager.register_node(crashing_node)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "crashing_node"}, text="Thinking: Dispatch.")
-        mock_gemini.add_expected_call("escalate", {"reason": "System crash", "failure_class": "SYSTEM_CRASH"}, text="Thinking: Escalating.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "crashing_node"}, text="Thinking: Dispatch."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "System crash", "failure_class": "SYSTEM_CRASH"},
+            text="Thinking: Escalating.",
+        )
 
         result = bag.start_job(objective="Crash test.")
         assert "pending_escalation" in result
@@ -136,8 +155,12 @@ class TestClawBagExecution:
 
         bag.register_hitl_handler(handler)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "hold_node"}, text="Thinking: Dispatch.")
-        mock_gemini.add_expected_call("suspend", {"human_request_message": "Needs human look."}, text="Thinking: Suspending.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "hold_node"}, text="Thinking: Dispatch."
+        )
+        mock_gemini.add_expected_call(
+            "suspend", {"human_request_message": "Needs human look."}, text="Thinking: Suspending."
+        )
 
         result = bag.start_job(objective="HITL test.")
         assert result.get("suspended") is True
@@ -178,9 +201,15 @@ class TestClawBagExecution:
         bag.manager.register_node(consumer_node)
         bag.manager.register_node(producer_node)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "producer_node"}, text="Thinking: Dispatch producer.")
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "consumer_node"}, text="Thinking: Dispatch consumer.")
-        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Done.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "producer_node"}, text="Thinking: Dispatch producer."
+        )
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "consumer_node"}, text="Thinking: Dispatch consumer."
+        )
+        mock_gemini.add_expected_call(
+            "complete", {"final_summary": "Done."}, text="Thinking: Done."
+        )
 
         result = bag.start_job(
             objective="Test prerequisite stall and resolution.",

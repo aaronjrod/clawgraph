@@ -4,7 +4,6 @@ When a producer node FAILs, consumers whose prerequisites can never be
 satisfied should be cascaded to FAILED instead of staying in stalled_queue.
 """
 
-
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import (
     ClawOutput,
@@ -54,8 +53,14 @@ class TestDeadEndCascade:
         # 1. Dispatch producer (fails)
         # 2. Orchestrator detects failure, cascades consumer to FAILED (DEAD_END)
         # 3. Escalates
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "producer"}, text="Thinking: Dispatching producer.")
-        mock_gemini.add_expected_call("escalate", {"reason": "Producer failed, cannot continue.", "failure_class": "TOOL_FAILURE"}, text="Thinking: Producer failed. I'll check stalled nodes... consumer is blocked. Cascading.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "producer"}, text="Thinking: Dispatching producer."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "Producer failed, cannot continue.", "failure_class": "TOOL_FAILURE"},
+            text="Thinking: Producer failed. I'll check stalled nodes... consumer is blocked. Cascading.",
+        )
 
         result = bag.start_job(objective="Dead end test.", max_iterations=5)
 
@@ -100,8 +105,14 @@ class TestDeadEndCascade:
         bag.manager.register_node(failing_node)
         bag.manager.register_node(unrelated_consumer)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "failing_node"}, text="Thinking: This node failed.")
-        mock_gemini.add_expected_call("escalate", {"reason": "Logic error.", "failure_class": "LOGIC_ERROR"}, text="Thinking: Failing node failed. Unrelated consumer is still stalled on something else.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "failing_node"}, text="Thinking: This node failed."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "Logic error.", "failure_class": "LOGIC_ERROR"},
+            text="Thinking: Failing node failed. Unrelated consumer is still stalled on something else.",
+        )
 
         result = bag.start_job(objective="Selective cascade.", max_iterations=5)
 
@@ -144,8 +155,14 @@ class TestDeadEndCascade:
         bag.manager.register_node(doomed_producer)
         bag.manager.register_node(doomed_consumer)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "doomed_producer"}, text="Thinking: Producer failure.")
-        mock_gemini.add_expected_call("escalate", {"reason": "System crash", "failure_class": "SYSTEM_CRASH"}, text="Thinking: Escalating.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "doomed_producer"}, text="Thinking: Producer failure."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "System crash", "failure_class": "SYSTEM_CRASH"},
+            text="Thinking: Escalating.",
+        )
 
         result = bag.start_job(objective="Timeline test.", max_iterations=5)
 
@@ -202,8 +219,14 @@ class TestDeadEndCascade:
         bag.manager.register_node(dep_a)
         bag.manager.register_node(dep_b)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "breaker"}, text="Thinking: Breaker failed.")
-        mock_gemini.add_expected_call("escalate", {"reason": "Breaking cascade.", "failure_class": "LOGIC_ERROR"}, text="Thinking: Cascading dep_a and dep_b.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "breaker"}, text="Thinking: Breaker failed."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "Breaking cascade.", "failure_class": "LOGIC_ERROR"},
+            text="Thinking: Cascading dep_a and dep_b.",
+        )
 
         result = bag.start_job(objective="Multi-cascade.", max_iterations=5)
 

@@ -1,7 +1,10 @@
 from typing import Any
+
 from clawgraph import ClawOutput, Signal, clawnode
 from clawgraph.core.models import HumanRequest
+
 from .llm_utils import run_cto_llm_node
+
 
 @clawnode(
     id="ectd_publisher",
@@ -9,7 +12,7 @@ from .llm_utils import run_cto_llm_node
     bag="reg_ops",
     skills=["reg_ops/ectd_publishing.md"],
     tools=["pdf_parser"],
-    requires=["source_docs"]
+    requires=["source_docs"],
 )
 def publish_ectd(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
@@ -24,8 +27,9 @@ def publish_ectd(state: dict[str, Any]) -> ClawOutput:
         node_id="ectd_publisher",
         description="Generates and validates eCTD submission packages.",
         state=state,
-        skills=["reg_ops/ectd_publishing.md"]
+        skills=["reg_ops/ectd_publishing.md"],
     )
+
 
 @clawnode(
     id="formatting",
@@ -33,7 +37,7 @@ def publish_ectd(state: dict[str, Any]) -> ClawOutput:
     bag="reg_ops",
     skills=["reg_ops/formatting_coordination.md"],
     tools=["pdf_parser"],
-    requires=["unformatted_modules"]
+    requires=["unformatted_modules"],
 )
 def format_submission(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
@@ -48,8 +52,9 @@ def format_submission(state: dict[str, Any]) -> ClawOutput:
         node_id="formatting",
         description="Coordinates submission formatting and hyperlinks.",
         state=state,
-        skills=["reg_ops/formatting_coordination.md"]
+        skills=["reg_ops/formatting_coordination.md"],
     )
+
 
 @clawnode(
     id="global_coord",
@@ -57,7 +62,7 @@ def format_submission(state: dict[str, Any]) -> ClawOutput:
     bag="reg_ops",
     skills=["reg_ops/global_coordination.md"],
     tools=["gmail_api"],
-    requires=["regional_clearance"]
+    requires=["regional_clearance"],
 )
 def coordinate_global(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
@@ -72,8 +77,9 @@ def coordinate_global(state: dict[str, Any]) -> ClawOutput:
         node_id="global_coord",
         description="Coordinates global multi-country regulatory filings.",
         state=state,
-        skills=["reg_ops/global_coordination.md"]
+        skills=["reg_ops/global_coordination.md"],
     )
+
 
 @clawnode(
     id="submission_publisher",
@@ -85,13 +91,13 @@ def publish_submission(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
     if "submission_plan" not in archive:
         return ClawOutput(
-            signal=Signal.HOLD_FOR_HUMAN, 
-            node_id="submission_publisher", 
-            orchestrator_summary="Awaiting submission plan."
+            signal=Signal.HOLD_FOR_HUMAN,
+            node_id="submission_publisher",
+            orchestrator_summary="Awaiting submission plan.",
         )
     return run_cto_llm_node(
         node_id="submission_publisher",
         description="Publishes regions submissions into eCTD format.",
         state=state,
-        skills=[]
+        skills=[],
     )

@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-import time
+from typing import Any
 
 try:
     from google import genai
@@ -14,11 +14,9 @@ from clawgraph.core.models import HumanRequest
 
 logger = logging.getLogger(__name__)
 
+
 def run_cto_llm_node(
-    node_id: str, 
-    description: str, 
-    state: dict[str, Any], 
-    skills: list[str] | None = None
+    node_id: str, description: str, state: dict[str, Any], skills: list[str] | None = None
 ) -> ClawOutput:
     """Executes a dynamic LLM call for a CTO node."""
     if not genai or not os.getenv("GEMINI_API_KEY"):
@@ -29,7 +27,7 @@ def run_cto_llm_node(
             signal=Signal.DONE,
             node_id=node_id,
             orchestrator_summary=f"Mock execution for {node_id}. Please set GEMINI_API_KEY.",
-            result_uri=f"file://{abs_path}"
+            result_uri=f"file://{abs_path}",
         )
 
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -57,7 +55,7 @@ def run_cto_llm_node(
         for skill_path in skills:
             full_path = os.path.join(os.path.dirname(__file__), "..", "skills", skill_path)
             try:
-                with open(full_path, "r") as f:
+                with open(full_path) as f:
                     context_str_parts.append(f"\n--- SKILL: {skill_path} ---\n{f.read()}")
             except FileNotFoundError:
                 logger.warning(f"Skill file not found: {full_path}")
@@ -65,7 +63,7 @@ def run_cto_llm_node(
 
     # Assuming 'bag.name' is not available and using a generic placeholder or node_id
     # as the domain name for now, as it's not defined in the original context.
-    domain_name = node_id # Placeholder for bag.name
+    domain_name = node_id  # Placeholder for bag.name
 
     sys_prompt = f"""
 You are an expert agent executing the `{node_id}` node in the `{domain_name}` domain.
@@ -100,7 +98,7 @@ Return ONLY valid JSON matching this schema:
 
     user_content = f"Objective: {objective}\n\nDocument Archive (Available Files):\n"
     if archive:
-        for k in archive.keys():
+        for k in archive:
             user_content += f"- {k}\n"
     else:
         user_content += "(Empty)\n"
@@ -117,7 +115,7 @@ Return ONLY valid JSON matching this schema:
 
     try:
         logger.info(f"[{node_id}] Calling LLM...")
-        
+
         response = client.models.generate_content(
             model="gemini-3.1-flash-lite-preview",
             contents=user_content,
@@ -149,7 +147,7 @@ Return ONLY valid JSON matching this schema:
             "orchestrator_summary": data.get("summary", "Task completed."),
             "continuation_context": {"text": data.get("result", "")},
         }
-        
+
         if data.get("human_request_message") and sig in (Signal.HOLD_FOR_HUMAN, Signal.NEED_INFO):
             output_kwargs["human_request"] = HumanRequest(
                 message=data.get("human_request_message", "Human intervention required.")
@@ -164,8 +162,10 @@ Return ONLY valid JSON matching this schema:
             # Artifact generation for demo purposes
             # We use a relative path for the demo artifacts
             artifact_rel_path = f"artifacts/generated/{node_id}_output.md"
-            abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", artifact_rel_path))
-            
+            abs_path = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", artifact_rel_path)
+            )
+
             output_kwargs["result_uri"] = f"file://{abs_path}"
 
             # Write the result to the file so it can be previewed in the UI

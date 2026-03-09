@@ -29,8 +29,14 @@ class TestStateDrift:
 
         # 1. Dispatch honest_node (logic detects mismatch, returns NEED_INTERVENTION)
         # 2. Orchestrator sees NEED_INTERVENTION and should escalate.
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "honest_node"}, text="Thinking: Dispatching the node.")
-        mock_gemini.add_expected_call("escalate", {"reason": "State drift detected.", "failure_class": "SCHEMA_MISMATCH"}, text="Thinking: I detected a node ID mismatch, which is a schema violation.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "honest_node"}, text="Thinking: Dispatching the node."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "State drift detected.", "failure_class": "SCHEMA_MISMATCH"},
+            text="Thinking: I detected a node ID mismatch, which is a schema violation.",
+        )
 
         result = bag.start_job(objective="Drift test.")
 
@@ -54,8 +60,12 @@ class TestStateDrift:
 
         bag.manager.register_node(good_node)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "good_node"}, text="Thinking: Dispatching good node.")
-        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Finished.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "good_node"}, text="Thinking: Dispatching good node."
+        )
+        mock_gemini.add_expected_call(
+            "complete", {"final_summary": "Done."}, text="Thinking: Finished."
+        )
 
         result = bag.start_job(objective="Clean test.")
 

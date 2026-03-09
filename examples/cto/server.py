@@ -29,15 +29,18 @@ _TRACKED_BAGS: list[Any] = []
 # Global list to store chat messages
 _CHAT_LOGS: list[dict[str, Any]] = []
 
+
 # Pydantic model for chat messages
 class ChatMessage(BaseModel):
     sender: str
     text: str
     timestamp: str | None = None
 
+
 def set_tracked_bags(bags: list[Any]) -> None:
     global _TRACKED_BAGS
     _TRACKED_BAGS = bags
+
 
 @app.get("/")
 def get_index() -> HTMLResponse:
@@ -47,14 +50,12 @@ def get_index() -> HTMLResponse:
         html = f.read()
     return HTMLResponse(content=html)
 
+
 @app.get("/api/snapshot")
 def get_snapshot() -> JSONResponse:
     global _TRACKED_BAGS
     global _CHAT_LOGS
-    snapshot_data = {
-        "bags": [],
-        "documents": {}
-    }
+    snapshot_data = {"bags": [], "documents": {}}
 
     for bag in _TRACKED_BAGS:
         # Get the standard HUD snapshot for this bag
@@ -69,7 +70,7 @@ def get_snapshot() -> JSONResponse:
                     "domain": bag.name,
                     "owner_node": node_id,
                     "version": "v1.0",
-                    "last_modified": datetime.now(UTC).isoformat()
+                    "last_modified": datetime.now(UTC).isoformat(),
                 }
 
         # Extract timeline events for the active thread
@@ -78,22 +79,28 @@ def get_snapshot() -> JSONResponse:
         if thread_id and bag.signal_manager._timeline:
             events = bag.signal_manager._timeline.get_timeline(thread_id)
             for e in events:
-                raw_events.append({
-                    "event_id": e.event_id,
-                    "node_id": e.node_id,
-                    "signal": e.signal.value if e.signal else None,
-                    "summary": e.summary,
-                    "metadata": e.metadata,
-                    "timestamp": e.timestamp.isoformat() if e.timestamp else datetime.now(UTC).isoformat()
-                })
+                raw_events.append(
+                    {
+                        "event_id": e.event_id,
+                        "node_id": e.node_id,
+                        "signal": e.signal.value if e.signal else None,
+                        "summary": e.summary,
+                        "metadata": e.metadata,
+                        "timestamp": e.timestamp.isoformat()
+                        if e.timestamp
+                        else datetime.now(UTC).isoformat(),
+                    }
+                )
 
-        snapshot_data["bags"].append({
-            "name": bag.name,
-            "status": bag.signal_manager.overall_status,
-            "nodes": bag_snap["nodes"],
-            "links": bag_snap["links"],
-            "timeline": raw_events
-        })
+        snapshot_data["bags"].append(
+            {
+                "name": bag.name,
+                "status": bag.signal_manager.overall_status,
+                "nodes": bag_snap["nodes"],
+                "links": bag_snap["links"],
+                "timeline": raw_events,
+            }
+        )
 
     # Merge global chat logs and bag timeline events into one chronologically sorted chat log
     unified_chat = list(_CHAT_LOGS)
@@ -101,14 +108,16 @@ def get_snapshot() -> JSONResponse:
     for bag_data in snapshot_data["bags"]:
         for event in bag_data["timeline"]:
             # Synthesize an event dict that looks like a chat message for sorting
-            unified_chat.append({
-                "sender": "ORCHESTRATOR",
-                "text": f"[{bag_data['name'].upper()}] {event['summary']}",
-                "timestamp": event.get("timestamp", datetime.now(UTC).isoformat()),
-                "signal": event.get("signal"),
-                "node_id": event.get("node_id"),
-                "metadata": event.get("metadata", {})
-            })
+            unified_chat.append(
+                {
+                    "sender": "ORCHESTRATOR",
+                    "text": f"[{bag_data['name'].upper()}] {event['summary']}",
+                    "timestamp": event.get("timestamp", datetime.now(UTC).isoformat()),
+                    "signal": event.get("signal"),
+                    "node_id": event.get("node_id"),
+                    "metadata": event.get("metadata", {}),
+                }
+            )
 
     # Sort unified chat by timestamp if available
     with contextlib.suppress(Exception):
@@ -120,16 +129,13 @@ def get_snapshot() -> JSONResponse:
     encoded = json.dumps(snapshot_data, default=pydantic_encoder)
     return JSONResponse(content=json.loads(encoded))
 
+
 @app.post("/api/chat")
 def post_chat(msg: ChatMessage):
     """Allows Human or Super-Orchestrator to inject messages into the timeline HUD."""
     timestamp = msg.timestamp or datetime.now(UTC).isoformat()
     # Accept standard message
-    log_entry = {
-        "sender": msg.sender.upper(),
-        "text": msg.text,
-        "timestamp": timestamp
-    }
+    log_entry = {"sender": msg.sender.upper(), "text": msg.text, "timestamp": timestamp}
     # Extract destination bag if specified (e.g. [TO: CLINICAL_OPS] message)
     text = msg.text
     target_bag_name = None
@@ -140,17 +146,20 @@ def post_chat(msg: ChatMessage):
 
             # Allow case-insensitive matching and handle spaces/underscores
             for bag in _TRACKED_BAGS:
-                if bag.name.upper() == target_bag_name_raw.upper() or bag.name.replace("_", " ").upper() == target_bag_name_raw.upper():
+                if (
+                    bag.name.upper() == target_bag_name_raw.upper()
+                    or bag.name.replace("_", " ").upper() == target_bag_name_raw.upper()
+                ):
                     target_bag_name = bag.name
                     break
 
-            text = text[end_idx+1:].strip()
+            text = text[end_idx + 1 :].strip()
 
             if target_bag_name:
                 log_entry["text"] = f"[TO: {target_bag_name.upper()}] {text}"
 
         except ValueError:
-             pass
+            pass
 
     _CHAT_LOGS.append(log_entry)
 
@@ -185,8 +194,9 @@ def post_chat(msg: ChatMessage):
                     bag.signal_manager._human_responses[thread_id] = text
 
                     # Fire and forget the resume task in a separate thread so we don't block the API response
-                    def resume_task():
-                        bag.resume_job(thread_id, user_approval=True)
+                    def resume_task(b=bag, t=thread_id):
+                        b.resume_job(t, user_approval=True)
+
                     threading.Thread(target=resume_task).start()
 
                     # If we found a specific target bag and resumed it, we can stop searching
@@ -194,6 +204,7 @@ def post_chat(msg: ChatMessage):
                         break
 
     return {"status": "ok"}
+
 
 @app.get("/api/documents/{doc_uri:path}")
 def get_document(doc_uri: str):
@@ -204,7 +215,10 @@ def get_document(doc_uri: str):
     if doc_uri.startswith("file://"):
         filepath = doc_uri.replace("file://", "")
         if filepath.startswith("/seed/"):
-            return {"uri": doc_uri, "content": f"# Seed Document: {filepath}\nThis is an initial seed document to satisfy prerequisites."}
+            return {
+                "uri": doc_uri,
+                "content": f"# Seed Document: {filepath}\nThis is an initial seed document to satisfy prerequisites.",
+            }
 
         if os.path.exists(filepath):
             with open(filepath) as f:
@@ -214,8 +228,10 @@ def get_document(doc_uri: str):
     # If the document is not a mapped local file, we return a synthesized stub
     return {"uri": doc_uri, "content": content}
 
+
 def run_server(port: int = 8000) -> None:
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="error")
+
 
 def start_background_server(port: int = 8000) -> threading.Thread:
     thread = threading.Thread(target=run_server, args=(port,), daemon=True)

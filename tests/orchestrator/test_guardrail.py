@@ -5,7 +5,6 @@ failure class, the Orchestrator should escalate it to the Super-Orchestrator
 for review or remediation.
 """
 
-
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import (
     AggregatorOutput,
@@ -42,8 +41,14 @@ class TestGuardrailViolation:
         # 1. Dispatch node
         # 2. Node returns FAILED with GUARDRAIL_VIOLATION
         # 3. Orchestrator escalates
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "rogue_node"}, text="Thinking: Dispatching node.")
-        mock_gemini.add_expected_call("escalate", {"reason": "Guardrail violation detected.", "failure_class": "GUARDRAIL_VIOLATION"}, text="Thinking: Node violated security policy. Escalating immediately.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "rogue_node"}, text="Thinking: Dispatching node."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "Guardrail violation detected.", "failure_class": "GUARDRAIL_VIOLATION"},
+            text="Thinking: Node violated security policy. Escalating immediately.",
+        )
 
         result = bag.start_job(objective="Test guardrails.", max_iterations=5)
 
@@ -51,13 +56,18 @@ class TestGuardrailViolation:
         escalation = result.get("pending_escalation")
         assert escalation is not None
         assert escalation.get("signal") == "NEED_INTERVENTION"
-        assert escalation.get("error_detail", {}).get("failure_class") == FailureClass.GUARDRAIL_VIOLATION.value
+        assert (
+            escalation.get("error_detail", {}).get("failure_class")
+            == FailureClass.GUARDRAIL_VIOLATION.value
+        )
 
     def test_partial_guardrail_violation_escalates(self, mock_gemini):
         """A PARTIAL signal containing a GUARDRAIL_VIOLATION branch should escalate."""
         bag = ClawBag(name="guardrail_partial_bag")
 
-        @clawnode(id="agg_node", description="Aggregates parallel work.", bag="guardrail_partial_bag")
+        @clawnode(
+            id="agg_node", description="Aggregates parallel work.", bag="guardrail_partial_bag"
+        )
         def agg_node(state: dict) -> ClawOutput:  # type: ignore[type-arg]
             return AggregatorOutput(
                 signal=Signal.PARTIAL,
@@ -95,8 +105,17 @@ class TestGuardrailViolation:
         # 1. Dispatch aggregator
         # 2. Returns PARTIAL with GUARDRAIL_VIOLATION in breakdown
         # 3. Orchestrator escalates based on the partial signal's error class
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "agg_node"}, text="Thinking: Dispatching aggregator.")
-        mock_gemini.add_expected_call("escalate", {"reason": "Partial aggregation with guardrail violation.", "failure_class": "GUARDRAIL_VIOLATION"}, text="Thinking: A branch violated a guardrail. Escalating partial result.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "agg_node"}, text="Thinking: Dispatching aggregator."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {
+                "reason": "Partial aggregation with guardrail violation.",
+                "failure_class": "GUARDRAIL_VIOLATION",
+            },
+            text="Thinking: A branch violated a guardrail. Escalating partial result.",
+        )
 
         result = bag.start_job(objective="Test partial guardrails.", max_iterations=5)
 
@@ -108,4 +127,7 @@ class TestGuardrailViolation:
         escalation = result.get("pending_escalation")
         assert escalation is not None
         assert escalation.get("signal") == "NEED_INTERVENTION"
-        assert escalation.get("error_detail", {}).get("failure_class") == FailureClass.GUARDRAIL_VIOLATION.value
+        assert (
+            escalation.get("error_detail", {}).get("failure_class")
+            == FailureClass.GUARDRAIL_VIOLATION.value
+        )

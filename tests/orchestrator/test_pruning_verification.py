@@ -35,7 +35,9 @@ class TestPruningVerification:
         bag.manager.register_node(heavy_worker)
         bag.manager.register_node(verifier)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "heavy_worker"}, text="Large work.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "heavy_worker"}, text="Large work."
+        )
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "verifier"}, text="Verifying.")
         mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Finish.")
 

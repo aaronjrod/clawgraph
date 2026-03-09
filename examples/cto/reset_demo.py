@@ -19,13 +19,14 @@ def reset_demo():
         os.makedirs(generated_dir, exist_ok=True)
 
     # Clear any __pycache__ in the cto folder
-    for root, dirs, files in os.walk(base_dir):
+    for root, dirs, _files in os.walk(base_dir):
         if "__pycache__" in dirs:
             pycache_path = os.path.join(root, "__pycache__")
             print(f"Removing {pycache_path}")
             shutil.rmtree(pycache_path)
 
     print("Demo reset successfully.")
+
 
 if __name__ == "__main__":
     reset_demo()

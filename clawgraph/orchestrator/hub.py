@@ -90,8 +90,6 @@ def route_signal(state: BagState) -> str:
 # `_make_dispatch_node` and `_resolve_stalled` have been moved to llm_tools.py
 
 
-
-
 def _make_escalate_node() -> Callable[[BagState], BagState]:
     """Create the escalation node for SO-bound signal routing."""
 

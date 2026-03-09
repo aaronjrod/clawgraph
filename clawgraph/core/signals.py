@@ -96,11 +96,7 @@ class SignalManager:
 
     def record_chat(self, sender: str, text: str) -> None:
         """Record an external chat message (e.g. from HUD) into the bag context."""
-        entry = {
-            "sender": sender,
-            "text": text,
-            "timestamp": datetime.now().isoformat()
-        }
+        entry = {"sender": sender, "text": text, "timestamp": datetime.now().isoformat()}
         self._chat_history.append(entry)
         logger.info("Chat recorded in SignalManager: [%s] %s", sender, text)
 

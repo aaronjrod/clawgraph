@@ -2,6 +2,7 @@ import inspect
 import logging
 import os
 import sys
+import time
 from datetime import datetime
 
 # Add parent dir to path so clawgraph modules load
@@ -12,9 +13,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import nodes to register them within the bags
-import nodes
-import server
-from server import ChatMessage
+import nodes  # noqa: E402
+import server  # noqa: E402
+from server import ChatMessage  # noqa: E402
 
 LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -24,13 +25,11 @@ LOG_FILE = os.path.join(LOG_DIR, f"cto_simulation_{TIMESTAMP}.log")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(LOG_FILE, mode='w')
-    ]
+    handlers=[logging.StreamHandler(sys.stdout), logging.FileHandler(LOG_FILE, mode="w")],
 )
 logger = logging.getLogger("clawgraph.cto")
 print(f"[LOGS] Simulation logs being written to: {LOG_FILE}")
+
 
 def seed_initial_data(bags):
     """Seed the document archive with initial artifacts so nodes don't stall immediately."""
@@ -44,10 +43,11 @@ def seed_initial_data(bags):
         "patient_data": "file:///seed/patient_sync_raw.csv",
         "submission_plan": "file:///seed/submission_plan_2026.pdf",
         "unformatted_modules": "file:///seed/module_drafts.zip",
-        "regional_clearance": "file:///seed/regional_dispatch.json"
+        "regional_clearance": "file:///seed/regional_dispatch.json",
     }
 
     return seeds
+
 
 def main():
     print("========================================")
@@ -94,12 +94,14 @@ def main():
         (nodes.clinical_reg_bag, "Drafting initial protocols and IND shell."),
         (nodes.cmc_reg_bag, "Analyzing batch stability and impurity drift."),
         (nodes.clinical_ops_bag, "Syncing patient data and tracking adverse events."),
-        (nodes.reg_ops_bag, "Assembling eCTD submission sections.")
+        (nodes.reg_ops_bag, "Assembling eCTD submission sections."),
     ]
 
     for bag, desc in active_sequence:
         print(f"\n[ORCHESTRATOR] Activating Bag: {bag.name}")
-        server.post_chat(ChatMessage(sender="ORCHESTRATOR", text=f"Starting job in {bag.name}: {desc}"))
+        server.post_chat(
+            ChatMessage(sender="ORCHESTRATOR", text=f"Starting job in {bag.name}: {desc}")
+        )
 
         # Inject seeds into the initial archive and signal manager for HUD visibility
         for k, v in seed_data.items():
@@ -109,7 +111,7 @@ def main():
         bag.start_job(objective=desc, inputs=seed_data)
         time.sleep(2)
 
-    print("\n" + "="*40)
+    print("\n" + "=" * 40)
     print("         SIMULATION COMPLETE")
     print("========================================")
     print("HUD: http://localhost:8000")

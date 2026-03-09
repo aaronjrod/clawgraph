@@ -1,4 +1,5 @@
 import os
+
 from clawgraph import ClawBag
 
 # Resolve skills directory relative to this file
@@ -17,5 +18,5 @@ all_bags = [
     clinical_ops_bag,
     reg_ops_bag,
     strategy_labeling_bag,
-    marketing_bag
+    marketing_bag,
 ]

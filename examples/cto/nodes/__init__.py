@@ -26,5 +26,5 @@ __all__ = [
     "cmc_reg_bag",
     "marketing_bag",
     "reg_ops_bag",
-    "strategy_labeling_bag"
+    "strategy_labeling_bag",
 ]

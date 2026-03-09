@@ -1,4 +1,3 @@
-
 """End-to-end integration test — exercises the full ClawBag lifecycle.
 
 Covers:
@@ -61,9 +60,21 @@ class TestE2ELifecycle:
         # 1. Dispatch producer
         # 2. Dispatch consumer (which will stall, then resolve)
         # 3. Complete
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "data_producer"}, text="Thinking: I need to produce the data first.")
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "data_consumer"}, text="Thinking: Now that data is available, I can consume it.")
-        mock_gemini.add_expected_call("complete", {"final_summary": "E2E success"}, text="Thinking: All nodes completed successfully.")
+        mock_gemini.add_expected_call(
+            "dispatch_node",
+            {"node_id": "data_producer"},
+            text="Thinking: I need to produce the data first.",
+        )
+        mock_gemini.add_expected_call(
+            "dispatch_node",
+            {"node_id": "data_consumer"},
+            text="Thinking: Now that data is available, I can consume it.",
+        )
+        mock_gemini.add_expected_call(
+            "complete",
+            {"final_summary": "E2E success"},
+            text="Thinking: All nodes completed successfully.",
+        )
 
         result = bag.start_job(objective="Produce and consume data.", inputs={})
         assert result is not None
@@ -121,7 +132,11 @@ class TestE2EWithHITL:
         bag.register_hitl_handler(handler)
 
         # Prime mock to suspend
-        mock_gemini.add_expected_call("suspend", {"human_request_message": "Approve deployment?"}, text="Thinking: This is a sensitive operation, I need human approval.")
+        mock_gemini.add_expected_call(
+            "suspend",
+            {"human_request_message": "Approve deployment?"},
+            text="Thinking: This is a sensitive operation, I need human approval.",
+        )
 
         result = bag.start_job(objective="Deploy with approval.")
 
@@ -161,9 +176,21 @@ class TestE2ENeedInfoRetry:
         bag.manager.register_node(clarify_node)
 
         # Prime mock to dispatch twice
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "clarify_node"}, text="Thinking: First attempt, might need info.")
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "clarify_node"}, text="Thinking: Retrying after receiving info.")
-        mock_gemini.add_expected_call("complete", {"final_summary": "Done after retry"}, text="Thinking: Work is now complete.")
+        mock_gemini.add_expected_call(
+            "dispatch_node",
+            {"node_id": "clarify_node"},
+            text="Thinking: First attempt, might need info.",
+        )
+        mock_gemini.add_expected_call(
+            "dispatch_node",
+            {"node_id": "clarify_node"},
+            text="Thinking: Retrying after receiving info.",
+        )
+        mock_gemini.add_expected_call(
+            "complete",
+            {"final_summary": "Done after retry"},
+            text="Thinking: Work is now complete.",
+        )
 
         result = bag.start_job(objective="Clarify and produce.", max_iterations=5)
 
@@ -217,8 +244,16 @@ class TestE2EAggregatorPartialCommit:
         # Aggregator emits PARTIAL. In LLM mode, PARTIAL isn't a special routing signal anymore,
         # it just means the node finished its turn with partial results.
         # The Orchestrator decides whether to complete or dispatch more.
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "quality_gate"}, text="Thinking: Running the quality gate aggregator.")
-        mock_gemini.add_expected_call("complete", {"final_summary": "Aggregated"}, text="Thinking: Aggregation complete, even with partial results.")
+        mock_gemini.add_expected_call(
+            "dispatch_node",
+            {"node_id": "quality_gate"},
+            text="Thinking: Running the quality gate aggregator.",
+        )
+        mock_gemini.add_expected_call(
+            "complete",
+            {"final_summary": "Aggregated"},
+            text="Thinking: Aggregation complete, even with partial results.",
+        )
 
         result = bag.start_job(objective="Run quality gate.")
 
@@ -265,8 +300,16 @@ class TestE2EDomainVisibility:
 
         # If it stalls, the tool dispatch_node returns updates with signal=None.
         # The LLM sees this and should eventually complete or escalate.
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "reader"}, text="Thinking: Attempting to read the document.")
-        mock_gemini.add_expected_call("complete", {"final_summary": "Stalled out"}, text="Thinking: Document is not visible from this domain. Finishing for now.")
+        mock_gemini.add_expected_call(
+            "dispatch_node",
+            {"node_id": "reader"},
+            text="Thinking: Attempting to read the document.",
+        )
+        mock_gemini.add_expected_call(
+            "complete",
+            {"final_summary": "Stalled out"},
+            text="Thinking: Document is not visible from this domain. Finishing for now.",
+        )
 
         result = bag.start_job(
             objective="Read classified doc.",
@@ -308,8 +351,16 @@ class TestE2EDomainVisibility:
         ).model_dump()
 
         # Should proceed
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "reader"}, text="Thinking: Reading the public shared document.")
-        mock_gemini.add_expected_call("complete", {"final_summary": "Allowed"}, text="Thinking: Successfully read the public document.")
+        mock_gemini.add_expected_call(
+            "dispatch_node",
+            {"node_id": "reader"},
+            text="Thinking: Reading the public shared document.",
+        )
+        mock_gemini.add_expected_call(
+            "complete",
+            {"final_summary": "Allowed"},
+            text="Thinking: Successfully read the public document.",
+        )
 
         result = bag.start_job(
             objective="Read shared doc.",

@@ -4,7 +4,6 @@ inject_info() allows the SO to answer a NEED_INFO question by writing
 the answer into continuation_context and re-enqueuing the node.
 """
 
-
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, InfoRequest, Signal
 from clawgraph.orchestrator.graph import ClawBag
@@ -44,8 +43,14 @@ class TestInjectInfo:
 
         # 1. Dispatch questioner (returns NEED_INFO)
         # 2. Orchestrator suspends
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "questioner"}, text="Thinking: Dispatch.")
-        mock_gemini.add_expected_call("suspend", {"human_request_message": "Need clarification."}, text="Thinking: Suspending.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "questioner"}, text="Thinking: Dispatch."
+        )
+        mock_gemini.add_expected_call(
+            "suspend",
+            {"human_request_message": "Need clarification."},
+            text="Thinking: Suspending.",
+        )
 
         # First run — should stall on NEED_INFO
         bag.start_job(
@@ -83,8 +88,12 @@ class TestInjectInfo:
 
         bag.manager.register_node(asker)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "asker"}, text="Thinking: Dispatch.")
-        mock_gemini.add_expected_call("suspend", {"human_request_message": "Need info."}, text="Thinking: Suspending.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "asker"}, text="Thinking: Dispatch."
+        )
+        mock_gemini.add_expected_call(
+            "suspend", {"human_request_message": "Need info."}, text="Thinking: Suspending."
+        )
 
         bag.start_job(
             objective="Re-enqueue test.",

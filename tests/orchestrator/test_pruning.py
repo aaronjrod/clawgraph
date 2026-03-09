@@ -4,7 +4,6 @@ After a node completes with DONE, current_output should be cleared to
 prevent raw output blobs from accumulating in state.
 """
 
-
 from clawgraph.bag.node import clawnode
 from clawgraph.core.models import ClawOutput, Signal
 from clawgraph.orchestrator.graph import ClawBag
@@ -50,9 +49,15 @@ class TestMemoryPruning:
         bag.manager.register_node(step_one)
         bag.manager.register_node(step_two)
 
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "step_one"}, text="Thinking: Step 1.")
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "step_two"}, text="Thinking: Step 2.")
-        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Finished.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "step_one"}, text="Thinking: Step 1."
+        )
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "step_two"}, text="Thinking: Step 2."
+        )
+        mock_gemini.add_expected_call(
+            "complete", {"final_summary": "Done."}, text="Thinking: Finished."
+        )
 
         bag.start_job(objective="Pruning test.", max_iterations=10)
 
@@ -87,7 +92,9 @@ class TestMemoryPruning:
 
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "node_a"}, text="Thinking: A.")
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "node_b"}, text="Thinking: B.")
-        mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Thinking: Done.")
+        mock_gemini.add_expected_call(
+            "complete", {"final_summary": "Done."}, text="Thinking: Done."
+        )
 
         result = bag.start_job(objective="History test.", max_iterations=10)
 

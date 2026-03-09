@@ -29,7 +29,7 @@ class TestHUDSnapshot:
         mock_gemini.add_expected_call("dispatch_node", {"node_id": "worker"}, text="Work.")
         mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Finish.")
 
-        result = bag.start_job(objective="Test HUD.", thread_id="hud-thread")
+        bag.start_job(objective="Test HUD.", thread_id="hud-thread")
 
         # After job starts/completes
         snapshot_alive = bag.get_hud_snapshot(thread_id="hud-thread")

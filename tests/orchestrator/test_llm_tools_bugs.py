@@ -7,7 +7,6 @@ Bugs covered:
 4. `escalate` assuming `_result` suffix for cascading (Bug 2.3).
 """
 
-
 from clawgraph.core.models import ClawOutput, Signal
 from clawgraph.core.signals import SignalManager
 from clawgraph.orchestrator.llm_tools import OrchestratorTools
@@ -18,10 +17,12 @@ class MockManifest:
     def __init__(self, nodes=None):
         self.nodes = nodes or {}
 
+
 class MockMeta:
     def __init__(self, requires=None, audit_policy=None):
         self.requires = requires or []
         self.audit_policy = audit_policy
+
 
 class MockBagManager:
     def __init__(self, manifest):
@@ -34,11 +35,14 @@ class MockBagManager:
     def get_node_fn(self, node_id):
         # Default mock returns DONE
         return lambda state: ClawOutput(
-            signal=Signal.DONE, node_id=node_id, orchestrator_summary="Done.", result_uri="uri://mock"
+            signal=Signal.DONE,
+            node_id=node_id,
+            orchestrator_summary="Done.",
+            result_uri="uri://mock",
         )
 
-class TestLlmToolsBugs:
 
+class TestLlmToolsBugs:
     def test_bug_2_1_ready_queue_pops_dispatched_node(self):
         """Bug 2.1: dispatch_node should remove the dispatched node from ready_queue."""
         # Setup mock node that just returns DONE
@@ -48,7 +52,7 @@ class TestLlmToolsBugs:
         state = {
             "ready_queue": ["test_node", "other_node"],
             "stalled_queue": [],
-            "document_archive": {}
+            "document_archive": {},
         }
 
         updates = tools.dispatch_node(state, {"node_id": "test_node"})
@@ -64,7 +68,7 @@ class TestLlmToolsBugs:
             "current_output": {
                 "signal": "DONE",
                 "node_id": "previous_node",
-                "orchestrator_summary": "I am stale data that wastes context."
+                "orchestrator_summary": "I am stale data that wastes context.",
             }
         }
 
@@ -87,7 +91,7 @@ class TestLlmToolsBugs:
         state = {
             "timeline": [{"event": "historical"}],
             "document_archive": {},
-            "bag_name": "test_bag"
+            "bag_name": "test_bag",
         }
 
         # Dispatching a node with unmet prereqs triggers a STALLED event update
@@ -111,10 +115,7 @@ class TestLlmToolsBugs:
             "timeline": [{"event": "historical"}],
             "completed_nodes": ["historical_node"],
             "stalled_queue": ["consumer"],
-            "current_output": {
-                "signal": "FAILED",
-                "node_id": "producer"
-            }
+            "current_output": {"signal": "FAILED", "node_id": "producer"},
         }
 
         # For the test to trigger cascade, we need to mock the required artifact matching logic
@@ -148,10 +149,7 @@ class TestLlmToolsBugs:
             "stalled_queue": ["consumer"],
             "completed_nodes": [],
             "timeline": [],
-            "current_output": {
-                "signal": "FAILED",
-                "node_id": "producer"
-            }
+            "current_output": {"signal": "FAILED", "node_id": "producer"},
         }
 
         # To fix this bug, we need a way for the Orchestrator to know what artifacts a node
@@ -162,4 +160,4 @@ class TestLlmToolsBugs:
         # limitation exists.
 
         _updates = tools.escalate(state, {"reason": "failed", "failure_class": "LOGIC_ERROR"})
-        pass # Will implement fix and assertion once we decide how to link them.
+        pass  # Will implement fix and assertion once we decide how to link them.

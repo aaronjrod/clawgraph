@@ -1,7 +1,10 @@
 from typing import Any
+
 from clawgraph import ClawOutput, Signal, clawnode
 from clawgraph.core.models import HumanRequest
+
 from .llm_utils import run_cto_llm_node
+
 
 @clawnode(
     id="press_writer",
@@ -9,7 +12,7 @@ from .llm_utils import run_cto_llm_node
     bag="marketing",
     skills=["marketing/press_release.md"],
     tools=["gmail_api"],
-    requires=["milestone_confirmation"]
+    requires=["milestone_confirmation"],
 )
 def write_pr(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
@@ -24,5 +27,5 @@ def write_pr(state: dict[str, Any]) -> ClawOutput:
         node_id="press_writer",
         description="Drafts press releases for regulatory milestones.",
         state=state,
-        skills=["marketing/press_release.md"]
+        skills=["marketing/press_release.md"],
     )

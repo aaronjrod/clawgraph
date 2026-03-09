@@ -29,7 +29,9 @@ class TestInjectionSecurity:
         bag.manager.register_node(secure_node)
 
         # 1. Start a normal job
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "secure_node"}, text="Normal run.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "secure_node"}, text="Normal run."
+        )
         mock_gemini.add_expected_call("complete", {"final_summary": "Done."}, text="Finish.")
 
         result = bag.start_job(objective="Normal job.")
@@ -38,13 +40,18 @@ class TestInjectionSecurity:
         # 2. Simulate the Injection Testing workflow:
         # The Super-Orchestrator re-runs the node with a mutated input.
         # We verify the node correctly handles the injection.
-        mock_gemini.add_expected_call("dispatch_node", {"node_id": "secure_node"}, text="Injected run.")
-        mock_gemini.add_expected_call("escalate", {"reason": "Injection blocked.", "failure_class": "GUARDRAIL_VIOLATION"}, text="Thinking: Security test passed, injection was blocked.")
+        mock_gemini.add_expected_call(
+            "dispatch_node", {"node_id": "secure_node"}, text="Injected run."
+        )
+        mock_gemini.add_expected_call(
+            "escalate",
+            {"reason": "Injection blocked.", "failure_class": "GUARDRAIL_VIOLATION"},
+            text="Thinking: Security test passed, injection was blocked.",
+        )
 
         # Re-starting or continuing with injected payload
         result_injected = bag.start_job(
-            objective="Security probe.",
-            inputs={"injected_payload": "DROP TABLE users;"}
+            objective="Security probe.", inputs={"injected_payload": "DROP TABLE users;"}
         )
 
         # Verify the node failed as expected under injection

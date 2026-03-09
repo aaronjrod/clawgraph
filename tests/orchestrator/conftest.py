@@ -24,6 +24,7 @@ class MockGeminiClient:
         resp = SimpleNamespace(function_calls=[call], text="Thinking: No more tasks.")
         return resp
 
+
 @pytest.fixture
 def mock_gemini(monkeypatch):
     mock_client = MockGeminiClient()
