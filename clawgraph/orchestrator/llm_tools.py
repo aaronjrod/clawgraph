@@ -30,6 +30,10 @@ class CompleteArgs(BaseModel):
     final_summary: str = Field(description="A definitive summary of the entire completed job.")
 
 
+class PostChatMessageArgs(BaseModel):
+    text: str = Field(description="The message text to post back to the human in the chat tray.")
+
+
 class OrchestratorTools:
     """Tools available to the Orchestrator LLM to manage workflow state."""
 
@@ -398,6 +402,23 @@ class OrchestratorTools:
                 "signal": "DONE",
                 "node_id": "orchestrator",
                 "orchestrator_summary": msg,
+            }
+        }
+
+    def post_chat_message(self, state: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+        """Posts a message back to the human in the chat tray without interrupting flow."""
+        text = args.get("text", "")
+        if text:
+            logger.info(f"ORCHESTRATOR CHAT: {text}")
+            self.signal_manager.record_chat("ORCHESTRATOR", text)
+        
+        # This turn doesn't dispatch a node or terminate, so we just return metadata updates.
+        return {
+            "iteration_count": state.get("iteration_count", 0) + 1,
+            "current_output": {
+                "signal": None,
+                "node_id": "orchestrator",
+                "orchestrator_summary": f"Posted chat message: {text[:50]}...",
             }
         }
 

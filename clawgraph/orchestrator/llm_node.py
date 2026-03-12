@@ -83,6 +83,20 @@ def make_orchestrator_node(
                         required=["final_summary"],
                     ),
                 ),
+                types.FunctionDeclaration(
+                    name="post_chat_message",
+                    description="Post a message back to the human in the chat tray (e.g. status updates, answers).",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={
+                            "text": types.Schema(
+                                type=types.Type.STRING,
+                                description="The message text to send.",
+                            )
+                        },
+                        required=["text"],
+                    ),
+                ),
             ]
         )
     ]
@@ -264,6 +278,8 @@ Current Node Output (Last signal received):
                 return cast(BagState, tools.suspend(cast(dict[str, Any], state), args))
             elif call.name == "complete":
                 return cast(BagState, tools.complete(cast(dict[str, Any], state), args))
+            elif call.name == "post_chat_message":
+                return cast(BagState, tools.post_chat_message(cast(dict[str, Any], state), args))
             else:
                 return cast(
                     BagState,

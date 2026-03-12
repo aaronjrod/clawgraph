@@ -37,11 +37,11 @@ def seed_initial_data(bags):
 
     # Generic seeds
     seeds = {
-        "source_docs": "file:///seed/source_docs.pdf",
-        "protocol_v1": "file:///seed/protocol_v1.pdf",
-        "batch_record": "file:///seed/batch_record_alpha9.pdf",
+        "source_docs": "file:///seed/M4_R4__Guideline.pdf",
+        "protocol_v1": "file:///seed/E3_Guideline.pdf",
+        "batch_record": "file:///seed/M4Q_R1_Guideline.pdf",
         "patient_data": "file:///seed/patient_sync_raw.csv",
-        "submission_plan": "file:///seed/submission_plan_2026.pdf",
+        "submission_plan": "file:///seed/21 CFR 314.50 (up to date as of 3-09-2026).pdf",
         "unformatted_modules": "file:///seed/module_drafts.zip",
         "regional_clearance": "file:///seed/regional_dispatch.json",
     }
@@ -70,7 +70,7 @@ def main():
             meta = obj._clawnode_metadata
             for bag in bags:
                 if bag.name == meta.bag:
-                    bag.manager.register_node(obj)
+                    bag.manager.register_node(obj, warn_discovery=False)
                     break
 
     print("\n--- Initialized Bags ---")
@@ -95,6 +95,7 @@ def main():
         (nodes.cmc_reg_bag, "Analyzing batch stability and impurity drift."),
         (nodes.clinical_ops_bag, "Syncing patient data and tracking adverse events."),
         (nodes.reg_ops_bag, "Assembling eCTD submission sections."),
+        (nodes.marketing_bag, "Synthesizing the Clinical Safety & Efficacy Dossier for review."),
     ]
 
     for bag, desc in active_sequence:

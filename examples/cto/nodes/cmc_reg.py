@@ -23,17 +23,18 @@ def manage_stability(state: dict[str, Any]) -> ClawOutput:
 
 @clawnode(
     id="mod3_author",
-    description="Authors Module 3 technical documentation.",
+    description="Synthesize the CMC Quality Summary and Module 3 technical documentation based on Drug Substance stability data (ICH M4Q sections).",
     bag="cmc_regulatory",
-    skills=["cmc_reg/module_3_authoring.md"],
+    skills=["cmc_reg/module_3_authoring.md", "cmc/ich_m4q_r2_quality.md"],
     tools=["pdf_parser"],
 )
 def author_mod3(state: dict[str, Any]) -> ClawOutput:
     return run_cto_llm_node(
         node_id="mod3_author",
-        description="Authors Module 3 technical documentation.",
+        description="Synthesize the CMC Quality Summary and Module 3 technical documentation based on Drug Substance stability data (ICH M4Q sections).",
         state=state,
-        skills=["cmc_reg/module_3_authoring.md"],
+        skills=["cmc_reg/module_3_authoring.md", "cmc/ich_m4q_r2_quality.md"],
+        tools=["pdf_parser"],
     )
 
 
@@ -50,6 +51,7 @@ def validate_process(state: dict[str, Any]) -> ClawOutput:
         description="Validates drug substance manufacturing processes.",
         state=state,
         skills=["cmc_reg/drug_substance_process_validation.md"],
+        tools=["stats_calc"],
     )
 
 
@@ -72,4 +74,5 @@ def qc_batch(state: dict[str, Any]) -> ClawOutput:
         description="Validates manufacturing batch records against chemical controls.",
         state=state,
         skills=[],
+        tools=["excel_bridge", "pdf_parser"],
     )

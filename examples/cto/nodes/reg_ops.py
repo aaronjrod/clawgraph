@@ -28,6 +28,7 @@ def publish_ectd(state: dict[str, Any]) -> ClawOutput:
         description="Generates and validates eCTD submission packages.",
         state=state,
         skills=["reg_ops/ectd_publishing.md"],
+        tools=["pdf_parser"],
     )
 
 
@@ -53,6 +54,7 @@ def format_submission(state: dict[str, Any]) -> ClawOutput:
         description="Coordinates submission formatting and hyperlinks.",
         state=state,
         skills=["reg_ops/formatting_coordination.md"],
+        tools=["pdf_parser"],
     )
 
 
@@ -83,9 +85,10 @@ def coordinate_global(state: dict[str, Any]) -> ClawOutput:
 
 @clawnode(
     id="submission_publisher",
-    description="Publishes regions submissions into eCTD format.",
+    description="Assembles the NDA Admin Package, focusing on the FDA 356h Form and Regulatory Cover Letter.",
     bag="reg_ops",
     requires=["submission_plan"],
+    skills=["regulatory/fda_356h_v2023.md"],
 )
 def publish_submission(state: dict[str, Any]) -> ClawOutput:
     archive = state.get("document_archive", {})
@@ -97,7 +100,7 @@ def publish_submission(state: dict[str, Any]) -> ClawOutput:
         )
     return run_cto_llm_node(
         node_id="submission_publisher",
-        description="Publishes regions submissions into eCTD format.",
+        description="Assembles the NDA Admin Package, focusing on the FDA 356h Form and Regulatory Cover Letter.",
         state=state,
-        skills=[],
+        skills=["regulatory/fda_356h_v2023.md"],
     )

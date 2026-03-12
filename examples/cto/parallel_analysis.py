@@ -47,7 +47,7 @@ def cmc_quality_gate(state: dict[str, Any]) -> AggregatorOutput:
 
 def run_simulation():
     bag = ClawBag("cmc_regulatory")
-    bag.manager.register_node(cmc_quality_gate)
+    bag.manager.register_node(cmc_quality_gate, warn_discovery=False)
 
     print("\n[SUPER-ORCHESTRATOR] Initializing Parallel CMC Review...")
     state = bag.start_job(objective="Finalize CMC technical validation for IND submission.")

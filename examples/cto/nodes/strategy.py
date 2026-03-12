@@ -30,6 +30,7 @@ def assess_risk(state: dict[str, Any]) -> ClawOutput:
         description="Assesses market risk for regulatory strategy.",
         state=state,
         skills=["strategy/risk_negotiation.md"],
+        tools=["google_search"],
     )
 
 
@@ -55,6 +56,7 @@ def negotiate_label(state: dict[str, Any]) -> ClawOutput:
         description="Optimizes USPI labeling strategy.",
         state=state,
         skills=["strategy/approval_strategy.md"],
+        tools=["pdf_parser"],
     )
 
 
@@ -80,4 +82,5 @@ def manage_ccds(state: dict[str, Any]) -> ClawOutput:
         description="Aligns CCDS with safety signals across regions.",
         state=state,
         skills=["labeling/leaflets_ccds.md"],
+        tools=["pdf_parser"],
     )

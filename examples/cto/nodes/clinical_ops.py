@@ -18,6 +18,7 @@ def sync_patient(state: dict[str, Any]) -> ClawOutput:
         "Daily patient tracking and timezone synchronization.",
         state,
         ["clinical_ops/patient_tracking_sync.md"],
+        tools=["excel_bridge", "gmail_api"],
     )
 
 
@@ -34,6 +35,7 @@ def onboard_patient(state: dict[str, Any]) -> ClawOutput:
         "Onboards new patients with documentation.",
         state,
         ["clinical_ops/new_patient_onboarding.md"],
+        tools=["gmail_api", "pdf_parser"],
     )
 
 
@@ -50,6 +52,7 @@ def vet_invoices(state: dict[str, Any]) -> ClawOutput:
         "Vets lab invoices against Schedule of Assessments.",
         state,
         ["clinical_ops/lab_invoice_vetting.md"],
+        tools=["pdf_parser", "stats_calc"],
     )
 
 
@@ -114,22 +117,24 @@ def check_integrity(state: dict[str, Any]) -> ClawOutput:
         "Cross-dossier entity alignment and NM-class verification.",
         state,
         ["clinical_ops/document_alignment_checker.md"],
+        tools=["pdf_parser"],
     )
 
 
 @clawnode(
     id="narration_scribe",
-    description="Medical scribe narration for patient visits.",
+    description="Authors high-fidelity Patient Narratives for Serious Adverse Events according to ICH E3 standards.",
     bag="clinical_ops",
-    skills=["clinical_ops/medical_scribe_narration.md"],
+    skills=["clinical_ops/medical_scribe_narration.md", "clinical/sae_narrative_ich_e3.md"],
     tools=["pdf_parser"],
 )
 def scribe_visit(state: dict[str, Any]) -> ClawOutput:
     return run_cto_llm_node(
         "narration_scribe",
-        "Medical scribe narration for patient visits.",
+        "Authors high-fidelity Patient Narratives for Serious Adverse Events according to ICH E3 standards.",
         state,
-        ["clinical_ops/medical_scribe_narration.md"],
+        ["clinical_ops/medical_scribe_narration.md", "clinical/sae_narrative_ich_e3.md"],
+        tools=["pdf_parser"],
     )
 
 

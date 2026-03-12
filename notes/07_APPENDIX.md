@@ -117,6 +117,11 @@ This document serves as a repository for unresolved concerns, edge cases, and st
     - Collision: Can two bags have nodes with the same ID?
     - Ghost identity: If a node is deleted and re-registered with the same ID, is it the "same" node for timeline/audit purposes?
 
+### 2.14 Super-Orchestrator based Document Auto-Tagging
+- **Problem**: When users upload or register new documents to the `document_archive`, there is no automated way to generate semantic metadata (tags).
+- **Proposed Feature**: A background process or SO-triggered tool that parses newly registered artifacts (PDF/MD/JSON) and applies a standard set of regulatory and project-specific tags. 
+- **Benefit**: Enables high-fidelity "Discovery-First" retrieval and cross-bag visibility (B-REQ-13).
+
 ---
 
 ## 3. Operational Risks

@@ -87,6 +87,7 @@ class BagManager:
         self,
         node_fn: Callable[..., Any],
         metadata: ClawNodeMetadata | None = None,
+        warn_discovery: bool = True,
     ) -> ClawNodeMetadata:
         """Register a node into the bag. (F-REQ-1)
 
@@ -96,6 +97,7 @@ class BagManager:
         Args:
             node_fn: The node function (optionally decorated with @clawnode).
             metadata: Explicit metadata. Overrides decorator metadata if both exist.
+            warn_discovery: If True, warns if CRUD is called before inventory query.
 
         Returns:
             The registered ClawNodeMetadata.
@@ -105,7 +107,8 @@ class BagManager:
             ValueError: If no metadata is available.
         """
         self._check_locked()
-        self._warn_discovery_first()
+        if warn_discovery and len(self._manifest.nodes) > 0:
+            self._warn_discovery_first()
 
         # Extract metadata from decorator if not explicitly provided.
         if metadata is None:

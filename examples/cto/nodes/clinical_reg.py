@@ -42,6 +42,7 @@ def benchmark_protocol(state: dict[str, Any]) -> ClawOutput:
         "Drafts and benchmarks clinical protocols.",
         state,
         ["clinical_reg/protocol_development.md"],
+        tools=["google_search"],
     )
 
 
@@ -58,6 +59,7 @@ def author_ib(state: dict[str, Any]) -> ClawOutput:
         "Authors the Investigator's Brochure.",
         state,
         ["clinical_reg/ib_management.md"],
+        tools=["pdf_parser"],
     )
 
 
@@ -74,6 +76,7 @@ def generate_annual_report(state: dict[str, Any]) -> ClawOutput:
         "Generates annual regulatory reports.",
         state,
         ["clinical_reg/annual_reports_meetings.md"],
+        tools=["pdf_parser"],
     )
 
 
@@ -103,4 +106,5 @@ def coordinate_fda_response(state: dict[str, Any]) -> ClawOutput:
         "Compiles the Complete Response package when an FDA feedback letter is received.",
         state,
         ["clinical_reg/fda_response_coordinator.md"],
+        tools=["pdf_parser", "gmail_api"],
     )
