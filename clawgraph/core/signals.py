@@ -100,6 +100,11 @@ class SignalManager:
         self._chat_history.append(entry)
         logger.info("Chat recorded in SignalManager: [%s] %s", sender, text)
 
+    def clear_chat_history(self) -> None:
+        """Clears the chat history for this bag/session."""
+        self._chat_history.clear()
+        logger.info("Chat history cleared in SignalManager.")
+
     def record_input_artifact(self, artifact_id: str, uri: str) -> None:
         """Record an initial input artifact for HUD visibility."""
         self._result_uris[artifact_id] = uri

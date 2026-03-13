@@ -71,13 +71,13 @@ def make_orchestrator_node(
                 ),
                 types.FunctionDeclaration(
                     name="complete",
-                    description="Mark the job as successfully completed after all necessary nodes are DONE.",
+                    description="Mark the current reasoning loop as finished and return to a READY/IDLE state. You MUST call this after you have provided a status update or answered a question if you have no further nodes to dispatch in this turn. Failing to call complete() after a chat update will cause you to loop. Calling complete() DOES NOT clear your memory; it simply ends your current active turn.",
                     parameters=types.Schema(
                         type=types.Type.OBJECT,
                         properties={
                             "final_summary": types.Schema(
                                 type=types.Type.STRING,
-                                description="A definitive summary of the completed job.",
+                                description="A definitive summary of what you accomplished or what you are now waiting for.",
                             )
                         },
                         required=["final_summary"],
@@ -95,6 +95,14 @@ def make_orchestrator_node(
                             )
                         },
                         required=["text"],
+                    ),
+                ),
+                types.FunctionDeclaration(
+                    name="reset_memory",
+                    description="Clear the agent's chat history and internal context. Use this if the context is cluttered or you have been explicitly asked to reset your memory.",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={},
                     ),
                 ),
             ]
@@ -120,6 +128,14 @@ def make_orchestrator_node(
 
         sys_prompt = state.get("orchestrator_prompt", "You are the Tactical Director.")
 
+        # F-REQ-MOD-06: Loop Hygiene
+        sys_prompt += (
+            "\n\n## LOOP HYGIENE\n"
+            "- You are in a multi-turn reasoning loop. Each time you call `post_chat_message`, the loop continues.\n"
+            "- Once you have provided your update or answered the human, you MUST call `complete()` to end your turn.\n"
+            "- CRITICAL: If you see your own recent message in the 'Recent Chat History' section, do NOT repeat it. Call `complete()` immediately instead."
+        )
+
         # Check for any human responses targeting this thread from the HUD
         thread_id = state.get("thread_id")
         human_context = ""
@@ -133,9 +149,15 @@ def make_orchestrator_node(
 
         # Contextual history from SignalManager (Human chat)
         chat_context = ""
+        last_orchestrator_msg = None
         if hasattr(signal_manager, "_chat_history") and signal_manager._chat_history:
-            chat_lines = [f"- [{c['sender']}] {c['text']}" for c in signal_manager._chat_history]
+            chat_lines = []
+            for c in signal_manager._chat_history:
+                chat_lines.append(f"- [{c['sender']}] {c['text']}")
+                if c['sender'] == "ORCHESTRATOR":
+                    last_orchestrator_msg = c['text']
             chat_context = "\nRecent Chat History:\n" + "\n".join(chat_lines) + "\n"
+        logger.info(f"Chat Context: {chat_context}")
 
         # Build the dynamic context for this turn
         context = f"""
@@ -269,6 +291,21 @@ Current Node Output (Last signal received):
             call = response.function_calls[0]
             args = {k: v for k, v in call.args.items()} if call.args else {}
             logger.info(f"Orchestrator chose tool: {call.name} with args: {args}")
+
+            # F-REQ-MOD-09: Repetition Guard - Force completion if the agent tries to send an identical message
+            if (
+                call.name == "post_chat_message" 
+                and last_orchestrator_msg 
+                and args.get("text") == last_orchestrator_msg
+            ):
+                logger.warning("Repetitive chat detected. Forcing completion to break loop.")
+                return cast(
+                    BagState,
+                    tools.complete(
+                        cast(dict[str, Any], state),
+                        {"final_summary": "Redundant status update suppressed. Standing by for instructions."},
+                    ),
+                )
 
             # F-REQ-MOD-02: Sanity Guard - Prevent dispatching a node that just requested HOLD
             current_output = state.get("current_output", {})

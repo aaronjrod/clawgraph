@@ -8,7 +8,7 @@ from typing import Any
 
 import logging
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
@@ -201,7 +201,13 @@ def post_chat(msg: ChatMessage):
     # Resume or Start behavior for Human/Architect messages
     if msg.sender.upper() in ["HUMAN", "ARCHITECT"]:
         for bag in _TRACKED_BAGS:
+            # F-REQ-MOD-05: Strict directed routing
             if target_bag_name and bag.name != target_bag_name:
+                continue
+            
+            # F-REQ-MOD-05: "Silent if Idle" for generic broadcasts
+            # If no target specified and the bag is IDLE, don't trigger a new job for a simple "status?"
+            if not target_bag_name and text.lower().strip() == "status?" and bag.signal_manager.overall_status not in ["RUNNING", "SUSPENDED"]:
                 continue
 
             if bag.signal_manager.overall_status == "SUSPENDED":
@@ -211,16 +217,30 @@ def post_chat(msg: ChatMessage):
                     def resume_task(b=bag, t=thread_id, res=text):
                         b.resume_job(t, human_response=res)
                     threading.Thread(target=resume_task).start()
-                    if target_bag_name: break
 
             elif bag.signal_manager.overall_status not in ["RUNNING", "SUSPENDED"]:
                 print(f"[SERVER] Dispatching objective to {bag.name}: {text}")
                 def start_task(b=bag, obj=text):
                     b.start_job(objective=obj, inputs={})
                 threading.Thread(target=start_task).start()
-                if target_bag_name: break
 
     return {"status": "ok"}
+
+
+@app.post("/api/bags/{bag_name}/reset")
+def reset_bag_memory(bag_name: str):
+    """Explicitly clears the chat memory of a specific bag."""
+    target_bag = None
+    for bag in _TRACKED_BAGS:
+        if bag.name.upper() == bag_name.upper():
+            target_bag = bag
+            break
+    
+    if not target_bag:
+        raise HTTPException(status_code=404, detail=f"Bag {bag_name} not found")
+        
+    target_bag.signal_manager.clear_chat_history()
+    return {"status": "ok", "message": f"Memory for {bag_name} cleared."}
 
 
 @app.get("/api/documents/{doc_uri:path}")

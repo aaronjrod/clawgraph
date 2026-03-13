@@ -1,0 +1,9 @@
+[
+  {
+    "type": "alert",
+    "timestamp": "2026-03-11T20:53:14.287077",
+    "recipient": "test@example.com",
+    "subject": "Verification",
+    "body": "Tool test alert"
+  }
+]

@@ -422,6 +422,18 @@ class OrchestratorTools:
             }
         }
 
+    def reset_memory(self, state: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+        """Clears the agent's chat history and internal context memory."""
+        logger.info("Orchestrator requested memory reset.")
+        self.signal_manager.clear_chat_history()
+        return {
+            "current_output": {
+                "signal": None,
+                "node_id": "orchestrator",
+                "orchestrator_summary": "Memory reset successfully.",
+            }
+        }
+
 
 # Export the tools
 __all__ = ["CompleteArgs", "DispatchNodeArgs", "EscalateArgs", "OrchestratorTools", "SuspendArgs"]

@@ -1,0 +1,91 @@
+{
+    "21 CFR 314.50 (up to date as of 3-09-2026).pdf": [
+        "nda",
+        "regulations",
+        "content",
+        "format"
+    ],
+    "21 CFR Part 56 (up to date as of 3-09-2026).pdf": [
+        "irb",
+        "clinical_trials",
+        "ethics"
+    ],
+    "21 CFR Part 58 (up to date as of 3-09-2026).pdf": [
+        "glp",
+        "nonclinical",
+        "laboratory_practice"
+    ],
+    "51801448fnl.pdf": [
+        "fda",
+        "technical_guidance"
+    ],
+    "E3_Guideline.pdf": [
+        "ich",
+        "e3",
+        "clinical_study_report",
+        "structure",
+        "content"
+    ],
+    "E3_Q&As_R1_Q&As.pdf": [
+        "ich",
+        "e3",
+        "q&a",
+        "clinical_study_report"
+    ],
+    "FDA-356h_AcroForm_Sec_07-07-2023_0.pdf": [
+        "fda",
+        "356h",
+        "module_1",
+        "application_form"
+    ],
+    "FDA_3454_Stat_Sec_Ext_02-26-26.pdf": [
+        "fda",
+        "3454",
+        "financial_disclosure",
+        "certification"
+    ],
+    "FDA_3455_Stat_Sec_Ext_06-07-22_0.pdf": [
+        "fda",
+        "3455",
+        "financial_disclosure",
+        "disclosure_form"
+    ],
+    "Form-FDA-3674---Certifications-To-Accompany-Drug--Biological-Product--and-Device-Applications-Submissions--Printer-Friendly.pdf": [
+        "fda",
+        "3674",
+        "clinicaltrials_gov",
+        "certification"
+    ],
+    "M4Q_R1_Guideline.pdf": [
+        "ich",
+        "m4q",
+        "cmc",
+        "quality",
+        "module_2.3",
+        "module_3"
+    ],
+    "M4_R4__Guideline.pdf": [
+        "ich",
+        "m4",
+        "ctd",
+        "organization",
+        "granularity"
+    ],
+    "PDUFA FORM FDA 3397 10-5-12.pdf": [
+        "fda",
+        "3397",
+        "pdufa",
+        "user_fee"
+    ],
+    "eCFR __ 21 CFR 314.70 -- Supplements and other changes to an approved NDA_.pdf": [
+        "nda",
+        "regulations",
+        "supplements",
+        "changes"
+    ],
+    "eCFR __ 21 CFR Part 50 -- Protection of Human Subjects.pdf": [
+        "ethics",
+        "human_subjects",
+        "informed_consent"
+    ]
+}
