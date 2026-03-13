@@ -125,12 +125,29 @@ def get_snapshot() -> JSONResponse:
             "timeline": raw_events,
         })
 
-    # 3. Merge global chat logs and bag timeline events
+    # 3. Merge global chat logs, bag timeline events, and internal bag chats
     unified_chat = list(_CHAT_LOGS)
+    seen_chat_hashes = set()
+    for log in unified_chat:
+        seen_chat_hashes.add(f"{log['sender']}:{log['text']}")
+
+    for bag in _TRACKED_BAGS:
+        # Pull internal chats from the SignalManager
+        for chat in getattr(bag.signal_manager, "_chat_history", []):
+            chat_hash = f"{chat['sender']}:{chat['text']}"
+            if chat_hash not in seen_chat_hashes:
+                unified_chat.append({
+                    "sender": chat["sender"].upper(),
+                    "text": f"[{bag.name.upper()}] {chat['text']}" if chat["sender"].upper() == "ORCHESTRATOR" else chat["text"],
+                    "timestamp": chat.get("timestamp", datetime.now(UTC).isoformat()),
+                })
+                seen_chat_hashes.add(chat_hash)
+
+    # 4. Merge timeline events as "system messages"
     for bag_data in snapshot_data["bags"]:
         for event in bag_data["timeline"]:
             unified_chat.append({
-                "sender": "ORCHESTRATOR",
+                "sender": "SYSTEM",
                 "text": f"[{bag_data['name'].upper()}] {event['summary']}",
                 "timestamp": event.get("timestamp", datetime.now(UTC).isoformat()),
                 "signal": event.get("signal"),

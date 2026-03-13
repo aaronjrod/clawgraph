@@ -137,6 +137,11 @@ Your goal is to process the current state and return a structured JSON response.
     if state.get("inputs"):
         user_content += f"\nSpecific Inputs provided for this job:\n{state.get('inputs')}\n"
 
+    # F-REQ-MOD-01: Inject human response if we are resuming from a HOLD_FOR_HUMAN
+    human_response = state.get("human_response")
+    if human_response:
+        user_content += f"\nHuman Response from previous HOLD: {human_response}\n"
+
     try:
         logger.info(f"[{node_id}] Calling LLM...")
 

@@ -270,6 +270,25 @@ Current Node Output (Last signal received):
             args = {k: v for k, v in call.args.items()} if call.args else {}
             logger.info(f"Orchestrator chose tool: {call.name} with args: {args}")
 
+            # F-REQ-MOD-02: Sanity Guard - Prevent dispatching a node that just requested HOLD
+            current_output = state.get("current_output", {})
+            if (
+                call.name == "dispatch_node"
+                and current_output.get("signal") == "HOLD_FOR_HUMAN"
+                and args.get("node_id") == current_output.get("node_id")
+                and not state.get("human_response")
+            ):
+                logger.warning(
+                    f"Orchestrator attempted to re-dispatch suspended node '{args.get('node_id')}' without new human input. Interposing forced suspend."
+                )
+                return cast(
+                    BagState,
+                    tools.suspend(
+                        cast(dict[str, Any], state),
+                        {"human_request_message": "Awaiting necessary source data as previously requested."},
+                    ),
+                )
+
             if call.name == "dispatch_node":
                 return cast(BagState, tools.dispatch_node(cast(dict[str, Any], state), args))
             elif call.name == "escalate":

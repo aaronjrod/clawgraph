@@ -108,3 +108,20 @@ def coordinate_fda_response(state: dict[str, Any]) -> ClawOutput:
         ["clinical_reg/fda_response_coordinator.md"],
         tools=["pdf_parser", "gmail_api"],
     )
+
+
+@clawnode(
+    id="nda_admin_packager",
+    description="Assembles the NDA Administrative Package, including FDA 356h Form and Regulatory Cover Letter.",
+    bag="clinical_regulatory",
+    skills=["regulatory/fda_356h_v2023.md"],
+    tools=["pdf_parser"],
+)
+def package_nda_admin(state: dict[str, Any]) -> ClawOutput:
+    return run_cto_llm_node(
+        "nda_admin_packager",
+        "Assembles the NDA Administrative Package, including FDA 356h Form and Regulatory Cover Letter.",
+        state,
+        ["regulatory/fda_356h_v2023.md"],
+        tools=["pdf_parser"],
+    )

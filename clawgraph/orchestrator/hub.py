@@ -80,6 +80,10 @@ def route_signal(state: BagState) -> str:
     if signal == Signal.HOLD_FOR_HUMAN:
         return ROUTE_SUSPEND
 
+    # Support continuity after Orchestrator-level chat or metadata updates (F-REQ-MOD-03)
+    if signal is None:
+        return ROUTE_NEXT_NODE
+
     # For any other signal from the orchestrator (FAILED, NEED_INTERVENTION, etc.), escalate.
     return ROUTE_ESCALATE
 
